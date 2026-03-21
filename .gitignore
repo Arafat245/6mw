@@ -1,0 +1,50 @@
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Data files
+*.csv
+*.xlsx
+*.pkl
+*.gt3x
+*.zip
+
+# Raw and processed data directories
+csv_raw/
+csv_raw2/
+csv_ca/
+csv_preprocessed/
+csv_preprocessed2/
+csv_processed_home/
+Accel files/
+
+# Images and figures
+*.png
+figures/
+
+# PDF papers
+*.pdf
+
+# Results
+results/
+
+# Subject/ID files
+subJect_ids.txt
+sub_ids.csv
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+*.egg
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+
+# OS files
+.DS_Store
+Thumbs.db
