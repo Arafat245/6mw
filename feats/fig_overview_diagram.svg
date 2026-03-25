@@ -1,0 +1,234 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 850" font-family="Arial, Helvetica, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#555"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563EB"/>
+    </marker>
+    <marker id="arrow-red" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#DC2626"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#16A34A"/>
+    </marker>
+    <linearGradient id="clinic-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#DBEAFE;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#EFF6FF;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="home-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FEE2E2;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#FEF2F2;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="pls-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#DCFCE7;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#F0FDF4;stop-opacity:1"/>
+    </linearGradient>
+    <filter id="shadow" x="-2%" y="-2%" width="104%" height="104%">
+      <feDropShadow dx="2" dy="2" stdDeviation="3" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+
+  <!-- Title -->
+  <text x="600" y="35" text-anchor="middle" font-size="22" font-weight="bold" fill="#1E293B">Predicting 6-Minute Walk Distance from Wearable Accelerometry</text>
+  <text x="600" y="58" text-anchor="middle" font-size="14" fill="#64748B">Clinic 6MWT and Home Free-Living Monitoring in Pediatric MS (n=101, MS=38, Healthy=63)</text>
+
+  <!-- ================================================================ -->
+  <!-- CLINIC PATHWAY (Top) -->
+  <!-- ================================================================ -->
+  <rect x="20" y="75" width="1160" height="295" rx="12" fill="url(#clinic-grad)" stroke="#93C5FD" stroke-width="2" filter="url(#shadow)"/>
+  <text x="40" y="100" font-size="16" font-weight="bold" fill="#1D4ED8">CLINIC PATHWAY (6-Minute Walk Test)</text>
+
+  <!-- Sensor -->
+  <rect x="40" y="115" width="130" height="70" rx="8" fill="white" stroke="#3B82F6" stroke-width="2"/>
+  <text x="105" y="143" text-anchor="middle" font-size="13" font-weight="bold" fill="#1E40AF">Wrist Accel.</text>
+  <text x="105" y="162" text-anchor="middle" font-size="11" fill="#3B82F6">30 Hz, 3-axis</text>
+  <text x="105" y="177" text-anchor="middle" font-size="11" fill="#3B82F6">during 6MWT</text>
+
+  <!-- Preprocessing -->
+  <rect x="210" y="115" width="140" height="70" rx="8" fill="white" stroke="#3B82F6" stroke-width="2"/>
+  <text x="280" y="138" text-anchor="middle" font-size="12" font-weight="bold" fill="#1E40AF">Preprocessing</text>
+  <text x="280" y="155" text-anchor="middle" font-size="10" fill="#64748B">Gravity removal</text>
+  <text x="280" y="168" text-anchor="middle" font-size="10" fill="#64748B">Rodrigues rotation</text>
+  <text x="280" y="181" text-anchor="middle" font-size="10" fill="#64748B">→ AP, ML, VT axes</text>
+
+  <!-- Arrow sensor→preproc -->
+  <line x1="170" y1="150" x2="208" y2="150" stroke="#555" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Feature boxes -->
+  <!-- Gait -->
+  <rect x="390" y="108" width="140" height="55" rx="8" fill="white" stroke="#3B82F6" stroke-width="2"/>
+  <text x="460" y="130" text-anchor="middle" font-size="13" font-weight="bold" fill="#1E40AF">Gait (11)</text>
+  <text x="460" y="148" text-anchor="middle" font-size="10" fill="#64748B">cadence, jerk, ENMO,</text>
+  <text x="460" y="160" text-anchor="middle" font-size="10" fill="#64748B">harmonic ratios, RMS</text>
+
+  <!-- CWT -->
+  <rect x="390" y="170" width="140" height="55" rx="8" fill="white" stroke="#3B82F6" stroke-width="2"/>
+  <text x="460" y="192" text-anchor="middle" font-size="13" font-weight="bold" fill="#1E40AF">CWT (28)</text>
+  <text x="460" y="210" text-anchor="middle" font-size="10" fill="#64748B">wavelet energy, entropy,</text>
+  <text x="460" y="222" text-anchor="middle" font-size="10" fill="#64748B">cadence, freq variability</text>
+
+  <!-- WalkSway -->
+  <rect x="390" y="232" width="140" height="55" rx="8" fill="white" stroke="#3B82F6" stroke-width="2"/>
+  <text x="460" y="254" text-anchor="middle" font-size="13" font-weight="bold" fill="#1E40AF">WalkSway (12)</text>
+  <text x="460" y="272" text-anchor="middle" font-size="10" fill="#64748B">ENMO-normalized ML/AP</text>
+  <text x="460" y="284" text-anchor="middle" font-size="10" fill="#64748B">sway, ellipse, jerk, CV</text>
+
+  <!-- Arrows preproc→features -->
+  <line x1="350" y1="140" x2="388" y2="135" stroke="#555" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="350" y1="150" x2="388" y2="197" stroke="#555" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="350" y1="160" x2="388" y2="259" stroke="#555" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Demo -->
+  <rect x="570" y="295" width="120" height="50" rx="8" fill="white" stroke="#8B5CF6" stroke-width="2"/>
+  <text x="630" y="317" text-anchor="middle" font-size="13" font-weight="bold" fill="#6D28D9">Demo (4)</text>
+  <text x="630" y="334" text-anchor="middle" font-size="10" fill="#64748B">cohort, age, sex, height</text>
+
+  <!-- Combine -->
+  <rect x="570" y="155" width="120" height="55" rx="8" fill="#DBEAFE" stroke="#2563EB" stroke-width="2.5"/>
+  <text x="630" y="177" text-anchor="middle" font-size="12" font-weight="bold" fill="#1E40AF">Combine</text>
+  <text x="630" y="195" text-anchor="middle" font-size="11" fill="#1E40AF">55 features</text>
+
+  <!-- Arrows features→combine -->
+  <line x1="530" y1="135" x2="568" y2="170" stroke="#3B82F6" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
+  <line x1="530" y1="197" x2="568" y2="182" stroke="#3B82F6" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
+  <line x1="530" y1="259" x2="568" y2="195" stroke="#3B82F6" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
+  <!-- Demo→Combine -->
+  <line x1="630" y1="295" x2="630" y2="212" stroke="#8B5CF6" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Ridge -->
+  <rect x="730" y="148" width="130" height="65" rx="8" fill="#1D4ED8" stroke="#1E40AF" stroke-width="2" filter="url(#shadow)"/>
+  <text x="795" y="172" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Ridge (α=10)</text>
+  <text x="795" y="190" text-anchor="middle" font-size="11" fill="#BFDBFE">LOO CV</text>
+  <text x="795" y="205" text-anchor="middle" font-size="11" fill="#BFDBFE">n=101</text>
+
+  <!-- Arrow combine→ridge -->
+  <line x1="690" y1="182" x2="728" y2="180" stroke="#2563EB" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+
+  <!-- Clinic Result -->
+  <rect x="900" y="140" width="260" height="80" rx="10" fill="white" stroke="#16A34A" stroke-width="3" filter="url(#shadow)"/>
+  <text x="1030" y="165" text-anchor="middle" font-size="15" font-weight="bold" fill="#15803D">Clinic 6MWD Prediction</text>
+  <text x="1030" y="188" text-anchor="middle" font-size="20" font-weight="bold" fill="#16A34A">R² = 0.806</text>
+  <text x="1030" y="210" text-anchor="middle" font-size="12" fill="#64748B">MAE = 100 ft | MS R²=0.874</text>
+
+  <!-- Arrow ridge→result -->
+  <line x1="860" y1="180" x2="898" y2="180" stroke="#16A34A" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+
+  <!-- ================================================================ -->
+  <!-- HOME PATHWAY (Bottom) -->
+  <!-- ================================================================ -->
+  <rect x="20" y="385" width="1160" height="295" rx="12" fill="url(#home-grad)" stroke="#FCA5A5" stroke-width="2" filter="url(#shadow)"/>
+  <text x="40" y="410" font-size="16" font-weight="bold" fill="#DC2626">HOME PATHWAY (Free-Living Monitoring)</text>
+
+  <!-- Sensor -->
+  <rect x="40" y="425" width="130" height="70" rx="8" fill="white" stroke="#EF4444" stroke-width="2"/>
+  <text x="105" y="453" text-anchor="middle" font-size="13" font-weight="bold" fill="#B91C1C">Wrist Accel.</text>
+  <text x="105" y="472" text-anchor="middle" font-size="11" fill="#EF4444">30 Hz, 3-axis</text>
+  <text x="105" y="487" text-anchor="middle" font-size="11" fill="#EF4444">7-day free-living</text>
+
+  <!-- Walking Detection -->
+  <rect x="210" y="425" width="140" height="70" rx="8" fill="white" stroke="#EF4444" stroke-width="2"/>
+  <text x="280" y="448" text-anchor="middle" font-size="12" font-weight="bold" fill="#B91C1C">Walking Bout</text>
+  <text x="280" y="463" text-anchor="middle" font-size="12" font-weight="bold" fill="#B91C1C">Detection</text>
+  <text x="280" y="480" text-anchor="middle" font-size="10" fill="#64748B">Activity index +</text>
+  <text x="280" y="493" text-anchor="middle" font-size="10" fill="#64748B">periodicity → AP,ML,VT</text>
+
+  <!-- Arrow -->
+  <line x1="170" y1="460" x2="208" y2="460" stroke="#555" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Home Feature boxes -->
+  <rect x="390" y="418" width="140" height="55" rx="8" fill="white" stroke="#EF4444" stroke-width="2"/>
+  <text x="460" y="440" text-anchor="middle" font-size="13" font-weight="bold" fill="#B91C1C">Gait (11)</text>
+  <text x="460" y="458" text-anchor="middle" font-size="10" fill="#64748B">same features as clinic</text>
+  <text x="460" y="470" text-anchor="middle" font-size="10" fill="#64748B">from walking bouts</text>
+
+  <rect x="390" y="480" width="140" height="55" rx="8" fill="white" stroke="#EF4444" stroke-width="2"/>
+  <text x="460" y="502" text-anchor="middle" font-size="13" font-weight="bold" fill="#B91C1C">CWT (28)</text>
+  <text x="460" y="520" text-anchor="middle" font-size="10" fill="#64748B">same CWT features</text>
+  <text x="460" y="532" text-anchor="middle" font-size="10" fill="#64748B">from walking bouts</text>
+
+  <rect x="390" y="542" width="140" height="55" rx="8" fill="white" stroke="#EF4444" stroke-width="2"/>
+  <text x="460" y="564" text-anchor="middle" font-size="13" font-weight="bold" fill="#B91C1C">WalkSway (12)</text>
+  <text x="460" y="582" text-anchor="middle" font-size="10" fill="#64748B">ENMO-normalized</text>
+  <text x="460" y="594" text-anchor="middle" font-size="10" fill="#64748B">walking sway features</text>
+
+  <!-- Arrows -->
+  <line x1="350" y1="450" x2="388" y2="445" stroke="#555" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="350" y1="460" x2="388" y2="507" stroke="#555" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="350" y1="470" x2="388" y2="569" stroke="#555" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Demo (Home) -->
+  <rect x="570" y="605" width="120" height="50" rx="8" fill="white" stroke="#8B5CF6" stroke-width="2"/>
+  <text x="630" y="627" text-anchor="middle" font-size="13" font-weight="bold" fill="#6D28D9">Demo (3)</text>
+  <text x="630" y="644" text-anchor="middle" font-size="10" fill="#64748B">cohort, age, sex</text>
+
+  <!-- ================================================================ -->
+  <!-- PLS DOMAIN ADAPTATION (Center) -->
+  <!-- ================================================================ -->
+  <rect x="555" y="430" width="150" height="100" rx="10" fill="url(#pls-grad)" stroke="#16A34A" stroke-width="2.5" filter="url(#shadow)"/>
+  <text x="630" y="458" text-anchor="middle" font-size="14" font-weight="bold" fill="#15803D">PLS (nc=2)</text>
+  <text x="630" y="478" text-anchor="middle" font-size="11" fill="#166534">Home Gait →</text>
+  <text x="630" y="494" text-anchor="middle" font-size="11" fill="#166534">Clinic Gait Space</text>
+  <text x="630" y="520" text-anchor="middle" font-size="10" fill="#64748B" font-style="italic">Domain Adaptation</text>
+
+  <!-- Arrow home gait→PLS -->
+  <line x1="530" y1="445" x2="553" y2="465" stroke="#16A34A" stroke-width="2" marker-end="url(#arrow-green)"/>
+
+  <!-- Dashed arrow from clinic gait to PLS (training target) -->
+  <line x1="530" y1="135" x2="545" y2="135" stroke="#3B82F6" stroke-width="1.5" stroke-dasharray="6,4"/>
+  <line x1="545" y1="135" x2="545" y2="450" stroke="#3B82F6" stroke-width="1.5" stroke-dasharray="6,4"/>
+  <line x1="545" y1="450" x2="553" y2="460" stroke="#3B82F6" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#arrow-blue)"/>
+  <text x="538" y="310" text-anchor="end" font-size="10" fill="#3B82F6" font-style="italic" transform="rotate(-90, 538, 310)">training target</text>
+
+  <!-- PLS output combine -->
+  <rect x="740" y="450" width="120" height="55" rx="8" fill="#DCFCE7" stroke="#16A34A" stroke-width="2.5"/>
+  <text x="800" y="472" text-anchor="middle" font-size="12" font-weight="bold" fill="#15803D">Combine</text>
+  <text x="800" y="492" text-anchor="middle" font-size="11" fill="#15803D">2 PLS + 3 Demo</text>
+  <text x="800" y="502" text-anchor="middle" font-size="11" fill="#15803D">= 5 features</text>
+
+  <!-- Arrow PLS→combine -->
+  <line x1="705" y1="480" x2="738" y2="477" stroke="#16A34A" stroke-width="2" marker-end="url(#arrow-green)"/>
+  <!-- Arrow Demo→combine -->
+  <line x1="630" y1="605" x2="770" y2="507" stroke="#8B5CF6" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Ridge Home -->
+  <rect x="895" y="445" width="130" height="65" rx="8" fill="#DC2626" stroke="#B91C1C" stroke-width="2" filter="url(#shadow)"/>
+  <text x="960" y="469" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Ridge (α=10)</text>
+  <text x="960" y="487" text-anchor="middle" font-size="11" fill="#FECACA">LOO CV</text>
+  <text x="960" y="502" text-anchor="middle" font-size="11" fill="#FECACA">n=101</text>
+
+  <!-- Arrow combine→ridge -->
+  <line x1="860" y1="477" x2="893" y2="477" stroke="#16A34A" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+
+  <!-- Home Result -->
+  <rect x="900" y="535" width="260" height="80" rx="10" fill="white" stroke="#DC2626" stroke-width="3" filter="url(#shadow)"/>
+  <text x="1030" y="560" text-anchor="middle" font-size="15" font-weight="bold" fill="#B91C1C">Home 6MWD Prediction</text>
+  <text x="1030" y="583" text-anchor="middle" font-size="20" font-weight="bold" fill="#DC2626">R² = 0.482</text>
+  <text x="1030" y="605" text-anchor="middle" font-size="12" fill="#64748B">MAE = 176 ft | MS R²=0.366</text>
+
+  <!-- Arrow ridge→result -->
+  <line x1="960" y1="510" x2="960" y2="520" stroke="#555" stroke-width="1.5"/>
+  <line x1="960" y1="520" x2="1030" y2="520" stroke="#555" stroke-width="1.5"/>
+  <line x1="1030" y1="520" x2="1030" y2="533" stroke="#DC2626" stroke-width="2.5" marker-end="url(#arrow-red)"/>
+
+  <!-- ================================================================ -->
+  <!-- LEGEND -->
+  <!-- ================================================================ -->
+  <rect x="20" y="700" width="1160" height="140" rx="10" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.5"/>
+
+  <!-- Key insight box -->
+  <text x="40" y="725" font-size="14" font-weight="bold" fill="#1E293B">Key Design Choices</text>
+
+  <circle cx="55" cy="748" r="6" fill="#3B82F6"/>
+  <text x="70" y="753" font-size="12" fill="#334155"><tspan font-weight="bold">Clinic:</tspan> All 51 sensor features + 4 demographics directly predict 6MWD via Ridge regression</text>
+
+  <circle cx="55" cy="773" r="6" fill="#DC2626"/>
+  <text x="70" y="778" font-size="12" fill="#334155"><tspan font-weight="bold">Home:</tspan> PLS maps noisy home gait into clinic gait space (domain adaptation), then Ridge on 5 features</text>
+
+  <circle cx="55" cy="798" r="6" fill="#16A34A"/>
+  <text x="70" y="803" font-size="12" fill="#334155"><tspan font-weight="bold">WalkSway normalization:</tspan> Raw ML/AP sway ÷ ENMO removes walking speed confound → higher = more instability</text>
+
+  <circle cx="55" cy="823" r="6" fill="#8B5CF6"/>
+  <text x="70" y="828" font-size="12" fill="#334155"><tspan font-weight="bold">Demographics:</tspan> Clinic uses 4 (+ height), Home uses 3 — height unavailable without clinic visit</text>
+
+</svg>
