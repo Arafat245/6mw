@@ -1,13 +1,13 @@
-# Predicting 6-Minute Walk Distance from Wearable Accelerometry in Pediatric MS
+# Predicting 6-Minute Walk Distance from Wearable Accelerometry in Pediatric-Onset MS (POMS)
 
 Predicting 6MWD from wrist-worn accelerometer data collected during clinic 6-minute walk tests and home free-living monitoring. Compares handcrafted gait/sway/wavelet features, foundation model embeddings, and PLS-based home-to-clinic domain adaptation.
 
-**Subjects:** n=101 (MS=38, Healthy=63), consistent across all analyses.
+**Subjects:** n=101 (POMS=38, Healthy=63), consistent across all analyses.
 
 ## Prerequisites
 
 ```bash
-pip install numpy pandas scipy scikit-learn matplotlib seaborn openpyxl pywt xgboost
+pip install numpy pandas scipy scikit-learn matplotlib seaborn openpyxl pywt xgboost shap statsmodels
 # Foundation models (optional, only needed for MOMENT/LimuBERT rows):
 pip install momentfm torch
 ```
@@ -41,9 +41,9 @@ Clinic raw data → preprocessed AP/ML/VT axes:
 python reproduce_c2.py
 ```
 
-This creates `csv_preprocessed2/` from `csv_raw2/` (gravity removal, Rodrigues rotation, PCA yaw alignment, bandpass filtering). Also extracts Gait10 + sway ratios + CWT features and runs initial LOO evaluation.
+This creates `csv_preprocessed2/` from `csv_raw2/` (gravity removal, Rodrigues rotation, PCA yaw alignment, bandpass filtering 0.25–2.5 Hz). Also extracts Gait10 + sway ratios + CWT features and runs initial LOO evaluation.
 
-Home walking segments are already in `results_raw_pipeline/walking_segments/` (created by `preprocess_raw.py`).
+Home walking segments are already in `results_raw_pipeline/walking_segments/` (created by `preprocess_raw.py` using gravity projection + PCA alignment, no bandpass — simpler preprocessing suited for noisy home data).
 
 ### Step 2: Extract Walking Sway Features
 
@@ -65,6 +65,7 @@ python results_table_final.py
 
 Runs LOO CV (Ridge α=10) for all feature set combinations:
 - Individual: Gait (11f), CWT (28f), WalkSway (12f), Demo (3-4f)
+- Pairwise: Gait+Demo (14-15f)
 - Combined: Gait+CWT+WalkSway+Demo (54-55f)
 - PLS: Home→Clinic domain adaptation (2 components + Demo)
 - Foundation models: MOMENT PCA50, LimuBERT (with/without Demo)
@@ -72,40 +73,32 @@ Runs LOO CV (Ridge α=10) for all feature set combinations:
 **Output:** `feats/results_table_final.csv`
 
 **Best results:**
-- Clinic: Gait+CWT+WalkSway+Demo → R²=0.8055
-- Home: PLS(Gait)+Demo → R²=0.4822
+- Clinic: Gait+CWT+WalkSway+Demo → R²=0.806
+- Home: PLS(Gait)+Demo → R²=0.482
 
-### Step 4: Generate All Figures and Tables
-
-Run the analysis script to produce all paper outputs:
-
-```bash
-python generate_paper_outputs.py
-```
-
-Or generate individually (see below).
-
-## Reproducing Individual Outputs
+## Reproducing All Outputs
 
 ### Tables
 
-| # | File | How to generate |
+| # | File | Description |
 |---|---|---|
-| T1 | `feats/demographics_table.csv` | Demographics (Table 1): age, sex, BMI, clinical scores by group |
-| T2 | `feats/results_table_final.csv` | `python results_table_final.py` |
-| T3 | `feats/ms_vs_healthy_features.csv` | MS vs Healthy comparison (Mann-Whitney, BH-corrected) |
-| T4 | `feats/feature_descriptions.csv` | Feature names, descriptions, units for all 63 features |
-| T5 | `feats/error_analysis_by_cohort.csv` | R², MAE, RMSE, Spearman ρ by cohort for all models |
+| T1 | `feats/demographics_table.csv` | Demographics / cohort characteristics (Table 1) |
+| T2 | `feats/results_table_final.csv` | Main results: R² by feature set (`python results_table_final.py`) |
+| T3 | `feats/ms_vs_healthy_features.csv` | POMS vs Healthy feature comparison (Mann-Whitney, BH-corrected) |
+| T4 | `feats/feature_descriptions.csv` | Feature & clinical score names by category |
+| T5 | `feats/error_analysis_by_cohort.csv` | Error analysis (R², MAE, RMSE, ρ) by cohort for all models |
 
 ### Figures
 
 | # | File | Description |
 |---|---|---|
-| F1 | `feats/heatmap_feature_6mwd_corr.png` | Feature-6MWD Spearman correlations by cohort/setting |
-| F2 | `feats/heatmap_clinical_corr_clinic.png` | Clinic wearable features vs clinical scores (MS only) |
-| F3 | `feats/heatmap_clinical_corr_home.png` | Home wearable features vs clinical scores (MS only) |
-| F4 | `feats/fig_predicted_vs_actual.png` | Predicted vs Actual 6MWD scatter (best models) |
-| F5 | `feats/fig_bland_altman.png` | Bland-Altman agreement plots (best models) |
+| F1 | `feats/fig_overview_diagram.svg` | Pipeline overview diagram (also in FigJam) |
+| F2 | `feats/heatmap_feature_6mwd_corr.png` | Feature-6MWD Spearman correlations by cohort/setting |
+| F3 | `feats/heatmap_clinical_corr_clinic.png` | Clinic wearable features vs clinical scores (POMS only) |
+| F4 | `feats/heatmap_clinical_corr_home.png` | Home wearable features vs clinical scores (POMS only) |
+| F5 | `feats/fig_predicted_vs_actual.png` | Predicted vs Actual 6MWD scatter (best models) |
+| F6 | `feats/fig_bland_altman.png` | Bland-Altman agreement plots (best models) |
+| F7 | `feats/fig_shap_importance.png` | SHAP top 10 feature importance beeswarm (Clinic + Home) |
 
 ## Feature Categories
 
@@ -150,15 +143,16 @@ Continuous wavelet transform features from raw accelerometer signal, computed pe
 Features include: mean_energy, high_freq_energy, dominant_freq, estimated_cadence, max_power_freq, freq_variability, freq_cv, wavelet_entropy, fundamental_freq, harmonic_ratio — each with mean and std across segments, plus temporal slopes for energy/entropy/variability.
 
 ### Demographics (3-4 features)
-- cohort_M (MS indicator), Age, Sex
+- cohort_POMS (POMS indicator), Age, Sex
 - Height (clinic only, excluded from home models)
 
 ## Key Methods
 
 - **LOO CV:** Leave-one-out cross-validation with StandardScaler inside the loop
 - **Ridge (α=10):** Primary model for all evaluations
-- **PLS:** Partial Least Squares maps home features into clinic feature space (2 components), enabling home-based 6MWD prediction without clinic data
+- **PLS:** Partial Least Squares maps home gait features into clinic gait feature space (2 components), enabling home-based 6MWD prediction without clinic data
 - **Walking sway normalization:** Raw sway features divided by ENMO to remove walking speed confound, so higher normalized sway = more instability
+- **SHAP:** Feature importance analysis on sensor features (excluding demographics)
 
 ## Key Scripts
 
@@ -171,4 +165,4 @@ Features include: mean_energy, high_freq_energy, dominant_freq, estimated_cadenc
 ## Excluded Subjects
 
 - **M22:** Excluded due to data quality issues (all analyses use n=101)
-- **M44:** Too-short clinic recording (601 samples), excluded from clinic features but included in home — analyses requiring both use n=101 intersection
+- **M44:** Too-short clinic recording (601 samples), excluded from clinic features — analyses requiring both home and clinic use n=101 intersection

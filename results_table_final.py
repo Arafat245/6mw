@@ -203,6 +203,11 @@ add('CWT', '28', loo(X_home_cwt, y), loo(X_clinic_cwt, y))
 add('WalkSway', '12', loo(X_home_ws, y), loo(X_clinic_ws, y))
 add('Demo', 'Home: 3, Clinic: 4', loo(X_demo_3, y), loo(X_demo_4, y))
 
+# Gait+Demo
+add('Gait+Demo', 'Home: 11+3=14, Clinic: 11+4=15',
+    loo(np.column_stack([X_home_gait, X_demo_3]), y),
+    loo(np.column_stack([X_clinic_gait, X_demo_4]), y))
+
 # All four
 add('Gait+CWT+WalkSway+Demo', 'Home: 11+28+12+3=54, Clinic: 11+28+12+4=55',
     loo(np.column_stack([X_home_gait, X_home_cwt, X_home_ws, X_demo_3]), y),
