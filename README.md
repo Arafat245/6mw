@@ -1,373 +1,380 @@
 # Gait Assessment in Pediatric-Onset Multiple Sclerosis Using Wearable Accelerometry
 
-Predicting 6MWD from hip-worn accelerometer data collected during clinic 6-minute walk tests and home free-living monitoring. Compares handcrafted gait/sway/wavelet features, foundation model embeddings, and PLS-based home-to-clinic domain adaptation.
+Predicting 6MWD from hip-worn accelerometer data collected during clinic 6-minute walk tests and home free-living monitoring in POMS.
 
 **Subjects:** n=101 (POMS=38, Healthy=63), consistent across all analyses.
 
 ## Best Results (Current)
 
-| Model | R² | MAE (ft) | Needs Clinic? |
-|---|---|---|---|
-| **Clinic:** Gait+CWT+WalkSway+Demo (55f) | **0.806** | 100 | N/A |
-| **Home (with clinic):** PLS(Gait)+Demo(5) (7f) | **0.519** | 172 | Yes (PLS training) |
-| **Home (no clinic):** Gait+Demo(5), Ridge α=50 (16f) | **0.488** | 175 | No |
+| Model | R² | MAE (ft) | r | ρ |
+|---|---|---|---|---|
+| **Clinic:** Gait+CWT+WalkSway+Demo (55f), Ridge α=10 | **0.806** | 100 | 0.898 | 0.889 |
+| **Home (with PLS):** PLS(Gait)+Demo(5) (7f), Ridge α=20 | **0.519** | 172 | 0.720 | 0.703 |
+| **Home (no PLS):** Gait+Demo(5) (16f), Ridge α=50 | **0.488** | 175 | 0.700 | 0.692 |
+
+## Folder Summary
+
+| Folder | Contents | Count |
+|---|---|---|
+| `clinic/` | Clinic pipeline scripts | 2 scripts |
+| `home/` | Home pipeline scripts | 4 scripts |
+| `analysis/` | Analysis & results scripts | 3 scripts |
+| `POMS/` | Paper (LaTeX, figures, tables) | — |
+| `feats/` | All extracted features & outputs | — |
+| `references/` | PDF reference papers | 15 PDFs |
+| `notebooks/` | Jupyter notebooks (exploratory/legacy) | 12 notebooks |
+| `old_figures/` | Old figures from early analysis | 18 PNGs |
+| `data/misc/` | Misc CSV/Excel/data files | ~15 files |
+| `data/legacy/` | Old data directories (csv_raw, csv_preprocessed) | 3 dirs |
+| `archive/` | Old experimental scripts (not in final pipeline) | ~20 scripts |
+| `temporary_experiments/` | Scratch space for new experiments before finalizing | — |
 
 ## Prerequisites
 
 ```bash
 pip install numpy pandas scipy scikit-learn matplotlib seaborn openpyxl pywt xgboost shap statsmodels pygt3x
-# Foundation models (optional, only needed for MOMENT/LimuBERT rows):
+# Foundation models (optional):
 pip install momentfm torch
 ```
 
-## Data Layout
+## Project Structure
 
 ```
-Accel files/                        Raw GT3X files + AGD epoch data + wear diary
-  C01_OPT/
-    *.gt3x                          Raw tri-axial acceleration (30 Hz, binary)
-    *60sec.agd                      SQLite: 60-sec epoch data (activity counts, steps, inclinometer)
-  HomeAccelerometer_ontimes.xlsx    Self-reported wear diary (65 POMS subjects)
-csv_raw2/                           Clinic 6MWT recordings (Timestamp, X, Y, Z) — extracted from GT3X
-csv_preprocessed2/                  Preprocessed clinic data (AP, ML, VT axes)
-csv_home_daytime/                   Home daytime accelerometer data (X, Y, Z, fs=30)
-results_raw_pipeline/
-  walking_segments/                 Home walking bouts (preprocessed AP, ML, VT) — from preprocess_raw.py
-  emb_limubert_clinic.npy           LimuBERT embeddings (clinic)
-  emb_limubert_home.npy             LimuBERT embeddings (home)
-SwayDemographics.xlsx               Demographics and clinical scores
-feats/
-  target_6mwd.csv                   Ground truth (cohort, subj_id, year, sixmwd)
-  home_hybrid_v2_features.npz       Home features (X_gait:13, X_act:15, X_cent:18, X_cwt:28, X_demo:4, y)
-  home_cwt_hybrid.csv               Home CWT features (28 features)
-  home_agd_features.csv             Home AGD epoch features (22 features)
-  home_walking_bout_indices.npz     Cached walking bout boundaries
-  moment_clinic_raw.npy             MOMENT embeddings (clinic)
-  moment_home_raw.npy               MOMENT embeddings (home)
-  best_predictions.csv              LOO predictions from best models
-  results_table_final.csv           Main results table
+6mw/
+├── README.md
+│
+├── clinic/                         CLINIC PIPELINE SCRIPTS
+│   ├── reproduce_c2.py               Preprocessing + Gait/CWT extraction
+│   └── extract_walking_sway.py       WalkSway feature extraction
+│
+├── home/                           HOME PIPELINE SCRIPTS
+│   ├── home_hybrid_models_v2.py      Home gait extraction (PRIMARY)
+│   ├── preprocess_raw.py             GT3X → daytime → walking_segments
+│   ├── extract_walking_sway.py       Home WalkSway features
+│   └── extract_agd_features.py       AGD epoch features
+│
+├── analysis/                       ANALYSIS & RESULTS SCRIPTS
+│   ├── results_table_final.py        Main results table
+│   ├── reproduce_best_results.py     Quick validation
+│   └── home_clinic_preproc.py        Preprocessing comparison
+│
+├── POMS/                           PAPER
+│   ├── main.tex                      LaTeX source
+│   ├── references.bib                Bibliography
+│   ├── figures/                      Paper figures
+│   └── tables/                       Paper tables
+│
+├── feats/                          EXTRACTED FEATURES & OUTPUTS
+│   ├── target_6mwd.csv               Ground truth (cohort, subj_id, year, sixmwd)
+│   ├── home_hybrid_v2_features.npz   Home features (X_gait, X_act, X_cent, X_cwt)
+│   ├── best_predictions.csv          LOO predictions from best models
+│   ├── results_table_final.csv       Main results table
+│   └── *.csv, *.png                  All tables and figures
+│
+├── csv_raw2/                       CLINIC DATA — raw 6MWT (Timestamp, X, Y, Z)
+├── csv_preprocessed2/              CLINIC DATA — preprocessed (AP, ML, VT, _bp, ENMO)
+├── csv_home_daytime/               HOME DATA — daytime accelerometer (X, Y, Z)
+├── results_raw_pipeline/           HOME DATA — walking segments + embeddings
+│   ├── walking_segments/             Walking bouts (AP, ML, VT)
+│   └── emb_*.npy                     Foundation model embeddings
+├── Accel files/                    RAW DATA — GT3X files + AGD + wear diary
+├── SwayDemographics.xlsx           DEMOGRAPHICS — clinical scores
+│
+├── references/                     REFERENCE PAPERS (PDFs)
+├── notebooks/                      JUPYTER NOTEBOOKS (exploratory/legacy)
+├── old_figures/                    OLD FIGURES (from early analysis)
+├── data/
+│   ├── misc/                         Misc CSV/Excel/data files
+│   └── legacy/                       Old data directories (csv_raw, csv_preprocessed)
+├── limubert_repo/                  LIMUBERT MODEL CODE
+└── archive/                        OLD SCRIPTS (experimental, not in final pipeline)
 ```
 
-## Full Pipeline (Step by Step)
+---
 
-### Phase 0: GT3X → Raw CSV (already done)
+## CLINIC PIPELINE
 
-**Input:** `Accel files/*/\*.gt3x` (binary accelerometer files from ActiGraph GT3X)
-**Script:** `preprocess_raw.py` (functions: `load_gt3x()`, `extract_daytime()`)
+### Step C0: GT3X → Raw CSV (already done)
 
-```bash
-python preprocess_raw.py
-```
+Clinic 6MWT recordings were extracted from GT3X files to `csv_raw2/` with columns: Timestamp, X, Y, Z.
 
-1. Read GT3X binary → extract timestamps + X, Y, Z acceleration at 30 Hz
-2. Extract daytime segments (7 AM – 10 PM) with worn-time detection (rolling std > 0.01)
-3. **Output:** `csv_home_daytime/*.csv` (X, Y, Z columns, ~4M samples per subject)
+### Step C1: Preprocessing
 
-**Note:** Clinic raw data in `csv_raw2/` was extracted separately (Timestamp, X, Y, Z from 6MWT recordings).
-
-### Phase 1: Clinic Preprocessing
-
+**Script:** `reproduce_c2.py` → function `preprocess_file()`
 **Input:** `csv_raw2/*.csv`
-**Script:** `reproduce_c2.py` (function: `preprocess_file()`)
+**Output:** `csv_preprocessed2/*.csv`
 
 ```bash
-python reproduce_c2.py
+python clinic/reproduce_c2.py
 ```
 
-Steps:
 1. Get sampling rate from timestamps (~30 Hz)
 2. Trim first/last 10 seconds (transition artifacts)
 3. Resample to uniform 30 Hz
-4. Gravity removal: 0.25 Hz 4th-order Butterworth lowpass → subtract gravity estimate
+4. Gravity removal: 0.25 Hz 4th-order Butterworth lowpass → subtract
 5. Rodrigues rotation: align gravity vector with Z-axis
-6. PCA yaw alignment: PCA on horizontal plane → AP (anteroposterior), ML (mediolateral), VT (vertical)
-7. Bandpass filter: 0.25–2.5 Hz on AP, ML, VT → AP_bp, ML_bp, VT_bp
+6. PCA yaw alignment: PCA on horizontal plane → AP, ML, VT
+7. Bandpass filter: 0.25–2.5 Hz → AP_bp, ML_bp, VT_bp
 8. Compute VM_dyn, VM_raw, ENMO
 
-**Output:** `csv_preprocessed2/*.csv` (18 columns: AP, ML, VT, AP_bp, ML_bp, VT_bp, VM_dyn, VM_raw, ENMO, metadata)
+**Output columns:** AP, ML, VT, AP_bp, ML_bp, VT_bp, VM_dyn, VM_raw, ENMO + metadata
 
-### Phase 2: Home Walking Detection and Feature Extraction
+### Step C2: Clinic Feature Extraction
 
-**IMPORTANT:** The home gait features in `home_hybrid_v2_features.npz` are created by `home_hybrid_models_v2.py`, NOT by `preprocess_raw.py`. The pipelines differ significantly.
+**Gait (11 features)** — from `csv_preprocessed2/`:
+- Script: `reproduce_c2.py` → `extract_gait10()` + `compute_vt_rms()` + `add_sway_ratios()`
+- Features: cadence_hz, step_time_cv_pct, acf_step_regularity, hr_ap, hr_vt, ml_rms_g, ml_spectral_entropy, jerk_mean_abs_gps, enmo_mean_g, cadence_slope_per_min, vt_rms_g
 
-**Input:** `csv_home_daytime/*.csv` + `csv_raw2/*.csv` (clinic data used as reference)
-**Script:** `home_hybrid_models_v2.py`
+**CWT (28 features)** — from `csv_raw2/`:
+- Script: `reproduce_c2.py` → `extract_cwt()`
+- Morlet wavelet on VM signal, 6 temporal segments, aggregated as mean/std/slope
 
-```bash
-python home_hybrid_models_v2.py
+**WalkSway (12 features)** — from `csv_preprocessed2/`:
+- Script: `extract_walking_sway.py` → `extract_walking_sway()`
+- 10 ENMO-normalized sway features + ml_over_enmo + ml_over_vt
+
+**Demo (4 features):** cohort_POMS, Age, Sex, Height from `SwayDemographics.xlsx`
+
+### Step C3: Clinic Prediction
+
+**Script:** `results_table_final.py`
+**Model:** Ridge α=10, LOO CV, n=101
+**Features:** Gait(11) + CWT(28) + WalkSway(12) + Demo(4) = **55 features**
+
 ```
-
-Steps for home gait feature extraction:
-
-1. **`detect_active_bouts(xyz, fs, min_bout_sec=30)`**
-   - Compute ENMO per second
-   - Mark seconds with ENMO ≥ 0.015 as active
-   - Merge consecutive active seconds into bouts (minimum 30 seconds)
-
-2. **`refine_with_hr(xyz, fs, bouts, hr_threshold=0.2)`**
-   - Bandpass filter VM at 0.5–3.0 Hz
-   - In 10-second windows within each bout, compute FFT
-   - Calculate harmonic ratio (even/odd harmonics) at detected cadence
-   - Keep only windows with HR ≥ 0.2 (confirms periodic walking)
-   - Merge passing windows into refined bouts (minimum 30 seconds)
-
-3. **`select_walking_segment(xyz, fs, bouts, target_sec=360, clinic_xyz, clinic_fs)`**
-   - Compute walking signature for each bout: [mean_ENMO, std_ENMO, cadence, step_regularity, ...]
-   - Compute walking signature for clinic 6MWT data (loaded from `csv_raw2/`)
-   - Rank home bouts by cosine similarity to clinic signature
-   - Select most clinic-like bouts up to 360 seconds total (matching 6MWT duration)
-   - **NOTE:** This step uses clinic data as reference for bout selection
-
-4. **`preprocess_walking(walking_xyz, fs)`**
-   - Gravity removal: 0.25 Hz lowpass → subtract
-   - Rodrigues rotation (same as clinic preprocessing)
-   - PCA yaw alignment → AP, ML, VT
-   - Bandpass filter for _bp variants
-   - Compute ENMO
-
-5. **`extract_gait13(preprocessed_df)`**
-   - Extract 13 features: cadence_hz, step_time_cv_pct, acf_step_regularity, hr_ap, hr_vt, ml_rms_g, ml_spectral_entropy, jerk_mean_abs_gps, enmo_mean_g, cadence_slope_per_min, vt_rms_g, ml_over_enmo, ml_over_vt
-
-**Output:** `feats/home_hybrid_v2_features.npz` containing:
-- `X_gait` (102, 13): Gait features (first 11 used as "Gait", last 2 as WalkSway ratios)
-- `X_act` (102, 15): Activity profile features
-- `X_cent` (102, 18): 6-minute activity centile features
-- `X_cwt` (102, 28): CWT features
-- `X_demo` (102, 4): Demographics
-- `y` (102,): 6MWD targets
-
-**To reproduce `home_hybrid_v2_features.npz` from scratch:**
-```python
-# After running home_hybrid_models_v2.py, save manually:
-np.savez('feats/home_hybrid_v2_features.npz',
-         X_gait=X_gait, X_act=X_act, X_cent=X_cent,
-         X_cwt=X_cwt, X_demo=X_demo, y=y)
-```
-
-### Phase 2b: Alternative Home Walking Segments (preprocess_raw.py)
-
-**Note:** `results_raw_pipeline/walking_segments/` was created by a DIFFERENT pipeline in `preprocess_raw.py`:
-- Different walking detection (RMS + std + autocorrelation, min 20 sec)
-- Different preprocessing (gravity projection, not Rodrigues rotation)
-- No bandpass filter
-- No clinic-informed bout selection
-
-These walking_segments are used for WalkSway feature extraction but NOT for the main gait features. The gait features come from `home_hybrid_models_v2.py`.
-
-### Phase 3: Clinic Feature Extraction
-
-**Input:** `csv_preprocessed2/*.csv`, `csv_raw2/*.csv`
-**Scripts:** `reproduce_c2.py`, `extract_walking_sway.py`
-
-**Clinic Gait (11 features)** — from `csv_preprocessed2/`:
-```python
-from reproduce_c2 import extract_gait10, compute_vt_rms, add_sway_ratios
-# extract_gait10(df) → 10 features from preprocessed AP/ML/VT + _bp signals
-# compute_vt_rms() → vt_rms_g (11th feature)
-# add_sway_ratios() → ml_over_enmo, ml_over_vt (moved to WalkSway)
-```
-
-**Clinic CWT (28 features)** — from `csv_raw2/`:
-```python
-from reproduce_c2 import extract_cwt
-# extract_cwt(raw_xyz) → 28 features using Morlet wavelet on VM signal
-# Aggregated across 6 temporal segments: mean, std, slope, slope_r
-```
-
-**Clinic WalkSway (12 features)** — from `csv_preprocessed2/`:
-```python
-from extract_walking_sway import extract_walking_sway
-# extract_walking_sway(AP, ML, VT) → 10 ENMO-normalized sway features
-# + ml_over_enmo, ml_over_vt from add_sway_ratios() = 12 total
-```
-
-**Clinic Demo (4 features):** cohort_POMS, Age, Sex, Height from `SwayDemographics.xlsx`
-
-**Best clinic model:** All 55 features (11+28+12+4), Ridge α=10, LOO CV
-```
-R²=0.8055, MAE=100.1 ft, r=0.898, ρ=0.889
+Best Clinic Result:
+  All:     R²=0.8055, MAE=100.1 ft, r=0.898, ρ=0.889
   POMS:    R²=0.874, MAE=93.2 ft
   Healthy: R²=0.637, MAE=104.2 ft
 ```
 
-**Reproduced by:** `python results_table_final.py` (row: Gait+CWT+WalkSway+Demo)
+**To reproduce:**
+```bash
+python analysis/results_table_final.py  # row: Gait+CWT+WalkSway+Demo
+```
 
-### Phase 4: Walking Sway Features
+---
 
-**Input:** `csv_preprocessed2/*.csv` (clinic), `results_raw_pipeline/walking_segments/*.csv` (home)
+## HOME PIPELINE
+
+### Step H0: GT3X → Home Daytime CSV (already done)
+
+**Script:** `preprocess_raw.py` → `load_gt3x()`, `extract_daytime()`
+**Input:** `Accel files/*/*.gt3x`
+**Output:** `csv_home_daytime/*.csv` (X, Y, Z, ~4M samples per subject)
+
+```bash
+python home/preprocess_raw.py
+```
+
+1. Read GT3X binary → timestamps + X, Y, Z at 30 Hz
+2. Extract daytime (7 AM – 10 PM) with worn-time detection (rolling std > 0.01)
+
+### Step H1: Home Gait Feature Extraction (PRIMARY pipeline)
+
+**IMPORTANT:** Home gait features are created by `home_hybrid_models_v2.py`, NOT `preprocess_raw.py`.
+
+**Script:** `home_hybrid_models_v2.py`
+**Input:** `csv_home_daytime/*.csv` + `csv_raw2/*.csv` (clinic data as reference)
+**Output:** `feats/home_hybrid_v2_features.npz`
+
+```bash
+python home/home_hybrid_models_v2.py
+# Then save: np.savez('feats/home_hybrid_v2_features.npz', X_gait=X_gait, X_act=X_act, X_cent=X_cent, X_cwt=X_cwt, X_demo=X_demo, y=y)
+```
+
+Steps:
+
+1. **`detect_active_bouts(xyz, fs, min_bout_sec=30)`**
+   - ENMO per second ≥ 0.015 → active
+   - Merge consecutive active seconds into bouts (min 30 sec)
+
+2. **`refine_with_hr(xyz, fs, bouts, hr_threshold=0.2)`**
+   - Bandpass VM at 0.5–3.0 Hz
+   - 10-sec windows: FFT → harmonic ratio (even/odd harmonics)
+   - Keep windows with HR ≥ 0.2 (periodic walking confirmed)
+   - Merge into refined bouts (min 30 sec)
+
+3. **`select_walking_segment(xyz, fs, bouts, target_sec=360, clinic_xyz, clinic_fs)`**
+   - Compute walking signature per bout: [mean_ENMO, std_ENMO, cadence, step_regularity, ...]
+   - Compute clinic 6MWT walking signature (loaded from `csv_raw2/`)
+   - Rank bouts by **cosine similarity to clinic** signature
+   - Select most clinic-like bouts up to **360 seconds** (6 minutes)
+   - **Uses clinic data as reference for bout selection**
+
+4. **`preprocess_walking(walking_xyz, fs)`**
+   - Gravity removal (0.25 Hz lowpass)
+   - **Rodrigues rotation** (same as clinic)
+   - PCA yaw → AP, ML, VT
+   - Bandpass for _bp variants + ENMO
+
+5. **`extract_gait13(preprocessed_df)`**
+   - 13 features: cadence_hz, step_time_cv_pct, acf_step_regularity, hr_ap, hr_vt, ml_rms_g, ml_spectral_entropy, jerk_mean_abs_gps, enmo_mean_g, cadence_slope_per_min, vt_rms_g, ml_over_enmo, ml_over_vt
+
+**Output NPZ contents:**
+
+| Key | Shape | Description |
+|---|---|---|
+| X_gait | (102, 13) | 11 gait + 2 sway ratios |
+| X_act | (102, 15) | Activity profile features |
+| X_cent | (102, 18) | 6-minute activity centile features |
+| X_cwt | (102, 28) | CWT features |
+| X_demo | (102, 4) | Demographics |
+| y | (102,) | 6MWD targets |
+
+**Verified:** Reproduced features correlate r=1.0000 with cached npz.
+
+### Step H1b: Alternative Home Walking Segments (SECONDARY pipeline)
+
+**Script:** `preprocess_raw.py`
+**Output:** `results_raw_pipeline/walking_segments/*.csv`
+
+Different from H1:
+- Detection: RMS + std + autocorrelation (min 20 sec)
+- Preprocessing: gravity projection (not Rodrigues), no bandpass
+- No clinic-informed bout selection
+- **Used only for WalkSway features**, NOT for main gait features
+
+### Step H2: Home WalkSway Features
+
 **Script:** `extract_walking_sway.py`
+**Input:** `results_raw_pipeline/walking_segments/*.csv`
+**Output:** `feats/home_walking_sway.csv`
 
 ```bash
-python extract_walking_sway.py
+python clinic/extract_walking_sway.py  # also: python home/extract_walking_sway.py
 ```
 
-Extracts 10 ENMO-normalized walking sway features + 2 sway ratios (ml_over_enmo, ml_over_vt) = 12 total.
-Normalization by ENMO removes walking speed confound → higher = more instability.
+12 ENMO-normalized sway features (same function as clinic, different input data).
 
-**Output:** `feats/clinic_walking_sway.csv`, `feats/home_walking_sway.csv`
+### Step H3: Home Prediction
 
-### Phase 5: Generate Results
+**Best Home with PLS (R²=0.519):**
+- Features: PLS(2 components from Gait11) + Demo(5) = 7 features
+- Gait from: `home_hybrid_v2_features.npz` X_gait[:, :11]
+- PLS target: clinic gait features from `reproduce_c2.py:extract_gait10()`
+- Model: Ridge α=20, LOO CV
+- **Requires paired clinic data** for PLS training
 
-**Script:** `results_table_final.py`
+**Best Home without PLS (R²=0.488):**
+- Features: Gait(11) + Demo(5) = 16 features
+- Model: Ridge α=50, LOO CV
+- **Note:** Home gait features still use clinic data as reference during bout selection (Step H1.3)
 
+```
+Best Home Result (PLS):
+  All:     R²=0.519, MAE=172 ft, r=0.720, ρ=0.703
+  POMS:    R²=0.405
+  Healthy: R²=0.354
+
+Best Home Result (no PLS):
+  All:     R²=0.488, MAE=175 ft, r=0.700, ρ=0.692
+  POMS:    R²=0.331
+  Healthy: R²=0.346
+```
+
+**To reproduce:**
 ```bash
-python results_table_final.py
+python analysis/results_table_final.py  # rows: PLS(Gait)+Demo, Gait+Demo
 ```
 
-Runs LOO CV for all feature set combinations. Uses Ridge α=10 for clinic, α=50 for best home.
+---
 
-**Output:** `feats/results_table_final.csv`
-
-## Reproducing All Outputs
+## Outputs
 
 ### Tables
 
 | # | File | Description |
 |---|---|---|
 | T1 | `feats/demographics_table.csv` | Demographics / cohort characteristics |
-| T2 | `feats/results_table_final.csv` | Main results: R² by feature set (`python results_table_final.py`) |
-| T3 | `feats/ms_vs_healthy_features.csv` | POMS vs Healthy feature comparison (Mann-Whitney, BH-corrected) |
+| T2 | `feats/results_table_final.csv` | Main results: R² by feature set |
+| T3 | `feats/ms_vs_healthy_features.csv` | POMS vs Healthy comparison (Mann-Whitney, BH-corrected) |
 | T4 | `feats/feature_descriptions.csv` | Feature & clinical score names by category |
-| T5 | `feats/error_analysis_by_cohort.csv` | Error analysis (R², MAE, RMSE, ρ) by cohort |
+| T5 | `feats/error_analysis_by_cohort.csv` | Error analysis by cohort |
 | T6 | `feats/clinic_home_feature_correlation.csv` | Clinic-home feature correlations |
-| T7 | `feats/literature_comparison.csv` | Literature comparison table |
+| T7 | `feats/literature_comparison.csv` | Literature comparison |
 
 ### Figures
 
 | # | File | Description |
 |---|---|---|
 | F1 | `feats/fig_overview_diagram.svg` | Pipeline overview diagram |
-| F2 | `feats/heatmap_feature_6mwd_corr.png` | Feature-6MWD Spearman correlations by cohort/setting |
-| F3 | `feats/heatmap_clinical_corr_clinic.png` | Clinic wearable features vs clinical scores (POMS only) |
-| F4 | `feats/heatmap_clinical_corr_home.png` | Home wearable features vs clinical scores (POMS only) |
-| F5 | `feats/fig_predicted_vs_actual.png` | Predicted vs Actual 6MWD scatter (best models) |
-| F6 | `feats/fig_bland_altman.png` | Bland-Altman agreement plots (best models) |
-| F7 | `feats/fig_shap_importance.png` | SHAP top 10 feature importance beeswarm (Clinic + Home) |
+| F2 | `feats/heatmap_feature_6mwd_corr.png` | Feature-6MWD correlations |
+| F3 | `feats/heatmap_clinical_corr_clinic.png` | Clinic features vs clinical scores (POMS) |
+| F4 | `feats/heatmap_clinical_corr_home.png` | Home features vs clinical scores (POMS) |
+| F5 | `feats/fig_predicted_vs_actual.png` | Predicted vs Actual 6MWD |
+| F6 | `feats/fig_bland_altman.png` | Bland-Altman agreement |
+| F7 | `feats/fig_shap_importance.png` | SHAP feature importance |
+
+---
 
 ## Feature Categories
 
 ### Gait (11 features)
-Extracted from aligned AP/ML/VT acceleration during walking.
 
 | Feature | Description | Unit |
 |---|---|---|
 | cadence_hz | Walking cadence | Hz |
-| step_time_cv_pct | Step time coefficient of variation | % |
+| step_time_cv_pct | Step time variability | % |
 | acf_step_regularity | Autocorrelation step regularity | — |
-| hr_ap | Harmonic ratio (anteroposterior) | — |
-| hr_vt | Harmonic ratio (vertical) | — |
-| ml_rms_g | Mediolateral RMS acceleration | g |
-| ml_spectral_entropy | Mediolateral spectral entropy | — |
-| jerk_mean_abs_gps | Mean absolute jerk of 3D velocity | g/s |
-| enmo_mean_g | ENMO (activity intensity) | g |
-| cadence_slope_per_min | Cadence trend over walk (fatigue) | Hz/min |
-| vt_rms_g | Vertical RMS acceleration | g |
+| hr_ap | Harmonic ratio (AP) | — |
+| hr_vt | Harmonic ratio (VT) | — |
+| ml_rms_g | Mediolateral RMS | g |
+| ml_spectral_entropy | ML spectral entropy | — |
+| jerk_mean_abs_gps | Mean absolute jerk | g/s |
+| enmo_mean_g | ENMO (intensity) | g |
+| cadence_slope_per_min | Cadence fatigue trend | Hz/min |
+| vt_rms_g | Vertical RMS | g |
 
 ### Walking Sway (12 features)
-ENMO-normalized trunk control features during walking. Higher = more instability.
+ENMO-normalized. Higher = more instability.
 
-| Feature | Description |
-|---|---|
-| ml_range_norm | ML peak-to-peak range / ENMO |
-| ml_path_length_norm | Cumulative ML displacement / ENMO |
-| ml_jerk_rms_norm | ML jerk RMS / ENMO |
-| ap_rms_norm | AP RMS / ENMO |
-| ap_range_norm | AP peak-to-peak range / ENMO |
-| sway_ellipse_norm | 95% ML×AP ellipse area / ENMO² |
-| ml_velocity_rms_norm | ML velocity RMS / ENMO |
-| stride_ml_cv | Stride-to-stride ML peak CV |
-| ml_ap_ratio | ML RMS / AP RMS |
-| hr_ml | Harmonic ratio (mediolateral) |
-| ml_over_enmo | ML RMS / ENMO |
-| ml_over_vt | ML RMS / VT RMS |
+ml_range_norm, ml_path_length_norm, ml_jerk_rms_norm, ap_rms_norm, ap_range_norm, sway_ellipse_norm, ml_velocity_rms_norm, stride_ml_cv, ml_ap_ratio, hr_ml, ml_over_enmo, ml_over_vt
 
 ### CWT (28 features)
-Continuous wavelet transform features from raw accelerometer signal, computed per segment then aggregated (mean/std/slope).
+Continuous wavelet transform: mean_energy, high_freq_energy, dominant_freq, estimated_cadence, max_power_freq, freq_variability, freq_cv, wavelet_entropy, fundamental_freq, harmonic_ratio — each mean/std + temporal slopes.
 
 ### Demographics
 - **Demo(3):** cohort_POMS, Age, Sex
-- **Demo(5):** cohort_POMS, Age, Sex, Height, BMI (better for home prediction)
+- **Demo(5):** cohort_POMS, Age, Sex, Height, BMI
 
-## Key Methods
-
-- **LOO CV:** Leave-one-out cross-validation with StandardScaler inside the loop
-- **Ridge:** α=10 for clinic models, α=50 for home models
-- **PLS:** Partial Least Squares maps home gait features into clinic gait feature space (2 components)
-- **Walking sway normalization:** Raw sway ÷ ENMO removes walking speed confound
-- **SHAP:** Feature importance analysis on sensor features (excluding demographics)
+---
 
 ## Key Scripts
 
 | Script | Purpose |
 |---|---|
-| `preprocess_raw.py` | GT3X → daytime segments → walking_segments (alternative pipeline) |
-| `reproduce_c2.py` | Clinic preprocessing + Gait/CWT feature extraction |
-| `home_hybrid_models_v2.py` | **Home gait feature extraction** (creates home_hybrid_v2_features.npz) |
-| `extract_walking_sway.py` | Walking sway feature extraction (clinic + home) |
-| `extract_agd_features.py` | AGD epoch features (activity counts, inclinometer, steps) |
-| `results_table_final.py` | Main results table (all feature combinations) |
+| `clinic/reproduce_c2.py` | Clinic preprocessing + Gait/CWT extraction |
+| `clinic/extract_walking_sway.py` | Clinic WalkSway features |
+| `home/home_hybrid_models_v2.py` | **Home gait feature extraction** (creates home_hybrid_v2_features.npz) |
+| `home/preprocess_raw.py` | GT3X → daytime CSV → walking_segments |
+| `home/extract_walking_sway.py` | Home WalkSway features |
+| `home/extract_agd_features.py` | AGD epoch features |
+| `analysis/results_table_final.py` | Main results table (all feature combinations) |
+
+---
 
 ## Important Notes
 
-### Home Feature Pipeline Distinction
-There are TWO different home preprocessing pipelines:
-1. **`home_hybrid_models_v2.py`** (PRIMARY): Clinic-informed bout selection, Rodrigues rotation, bandpass filter → creates `home_hybrid_v2_features.npz` → **used for all home gait features**
-2. **`preprocess_raw.py`** (SECONDARY): Simpler detection, gravity projection, no bandpass → creates `walking_segments/` → **used only for WalkSway features**
+### Two Home Pipelines
+1. **`home/home_hybrid_models_v2.py`** (PRIMARY): Clinic-informed bout selection, Rodrigues rotation, bandpass → `home_hybrid_v2_features.npz` → **all home gait features**
+2. **`home/preprocess_raw.py`** (SECONDARY): Simpler detection, gravity projection, no bandpass → `walking_segments/` → **WalkSway features only**
 
 ### Clinic-Informed Home Features
-The home gait features use clinic data as a reference during bout selection (`select_walking_segment()` computes cosine similarity to clinic walking signature). This means even the "no PLS" home model implicitly uses clinic data during feature extraction.
+Home gait features use clinic data as reference during bout selection (`select_walking_segment()` cosine similarity). Even the "no PLS" model implicitly uses clinic data during feature extraction.
+
+### Archive
+Old experimental scripts (exp1-exp11, run_all_models, predict_6mwd_*, etc.) are in `archive/`. These were used during development but are NOT part of the final pipeline.
 
 ### Clinic-Home Date Gaps
-Most subjects (64%) had clinic and home recordings within 3 days. However, 14 subjects had gaps >30 days (max 559 days), which may introduce noise in home prediction.
+64% of subjects had clinic and home within 3 days. 14 subjects had >30 days gap (max 559 days).
 
 ## Excluded Subjects
-
-- **M22:** Excluded due to data quality issues
+- **M22:** Data quality issues
 - **M44:** Too-short clinic recording (601 samples)
-- All analyses use n=101 (intersection of valid clinic + home data)
+- All analyses: n=101
 
-## Reproducing Best Results
-
-### Best Clinic (R²=0.806)
-
-```bash
-python results_table_final.py  # row: Gait+CWT+WalkSway+Demo
-```
-- Features: Gait(11) from `reproduce_c2.py:extract_gait10()` + CWT(28) from `reproduce_c2.py:extract_cwt()` + WalkSway(12) from `extract_walking_sway.py` + Demo(4) from `SwayDemographics.xlsx`
-- Model: Ridge α=10, LOO CV, n=101
-- Input data: `csv_preprocessed2/`, `csv_raw2/`, `SwayDemographics.xlsx`
-
-### Best Home with PLS (R²=0.519)
-
-```bash
-# Gait features from home_hybrid_models_v2.py (first 11 of X_gait)
-# PLS(nc=2) maps home gait → clinic gait space
-# Demo(5): cohort, age, sex, height, BMI
-# Ridge α=20
-```
-- Features: PLS(2 components) + Demo(5) = 7 features
-- Gait source: `feats/home_hybrid_v2_features.npz` X_gait[:, :11]
-- Clinic target for PLS: `reproduce_c2.py:extract_gait10()` from `csv_preprocessed2/`
-- **Requires paired clinic data** for PLS training
-
-### Best Home without PLS (R²=0.488)
-
-```bash
-# Same gait features + Demo(5), Ridge α=50
-```
-- Features: Gait(11) + Demo(5) = 16 features
-- Gait source: `feats/home_hybrid_v2_features.npz` X_gait[:, :11]
-- **Note:** Home gait features use clinic data as reference during bout selection in `home_hybrid_models_v2.py:select_walking_segment()`
-
-### Reproducing home_hybrid_v2_features.npz from scratch
-
-```bash
-python home_hybrid_models_v2.py
-# Then manually save:
-# np.savez('feats/home_hybrid_v2_features.npz', X_gait=X_gait, X_act=X_act, X_cent=X_cent, X_cwt=X_cwt, X_demo=X_demo, y=y)
-```
-- Verified: reproduced features correlate r=1.0000 with cached npz
-- Pipeline: detect_active_bouts → refine_with_hr → select_walking_segment (clinic-informed) → preprocess_walking (Rodrigues) → extract_gait13
+---
 
 ## Results History
 
@@ -375,5 +382,4 @@ python home_hybrid_models_v2.py
 |---|---|---|---|---|
 | Initial | Gait13+CWT+Demo, PLS(Gait)+Demo(3) | 0.792 | 0.483 | 0.428 |
 | +WalkSway | Gait11+CWT+WalkSway+Demo | 0.806 | 0.483 | 0.428 |
-| +Demo(5) | Added Height+BMI to demographics | 0.806 | **0.519** | **0.488** |
-| +α tuning | Ridge α=50 for home, PLS α=20 | 0.806 | 0.519 | 0.488 |
+| +Demo(5)+α | Added Height+BMI, tuned α | 0.806 | **0.519** | **0.488** |
