@@ -1,0 +1,67 @@
+CLINIC-FREE EXPERIMENT LOG
+Updated: 2026-03-26
+
+BASELINES:
+  Clinic-informed Gait(8)+Demo(5), α=20:  R²=0.507  MAE=174ft
+  Previous clinic-free best (ENMO select): R²=0.381  MAE=199ft
+
+========================================================================
+V2 EXPERIMENTS — Per-bout aggregation + activity features + correlation screen
+========================================================================
+
+Step 0: Extracted 161 clinic-free features (gait per-bout aggregated + activity + secondary)
+  - Relaxed min bout to 10s, merged adjacent bouts (gap <5s)
+  - Cadence <1.0 Hz filter rejected misdetected walking
+  - 374-1552 valid walking segments per subject
+
+WHAT WORKED:
+  * Top-20 correlated features + Demo(5): R²=0.441 MAE=191  <-- BEST CLINIC-FREE
+  * Top-12 + Demo(5): R²=0.436 MAE=192
+  * Top-8 + Demo(5): R²=0.430 MAE=193
+  * Gait-top10 + Demo(5): R²=0.412 MAE=197
+  * Bout meta-features (duration_max, bout_dur_cv) are strongest predictors (rho=0.41-0.42)
+  * Peak activity features (act_enmo_p95, act_pct_vigorous) also strong (rho=0.39)
+
+WHAT DIDN'T WORK:
+  * Activity-only (no walking detection): R²=0.301 — too weak standalone
+  * All significant features (80+): R²=0.371 — feature bloat
+  * All activity features (29): R²=0.272 — noise dominates
+  * Demo(3) instead of Demo(5): loses ~5% R² — Height/BMI matter
+
+========================================================================
+V3 EXPERIMENTS — Self-referencing, daily-segment, hybrids, longer windows
+========================================================================
+
+WHAT DIDN'T WORK:
+  * Self-consensus bout selection: R²=0.374 — doesn't beat v2 Top-20 (0.441)
+    Consensus picks "typical" walking but 6MWT needs "best" walking
+  * Population-mean bout selection: R²=0.363 — even worse
+  * Best-daily-segment (peak 6-min window): R²=0.371 — some features lost
+    But stride_time_mean has rho=-0.414 with 6MWD (strong new finding)
+  * Hybrid SelfRef+Daily: R²=0.366 — no improvement over either alone
+  * ENMO-ranked longer windows (600s, 900s): R²=0.35-0.36 — dilutes signal
+  * Self-referencing top-K: R²=0.33-0.36 — consistently worse than v2
+
+KEY INSIGHTS:
+  1. Per-bout aggregation with robust stats (v2) outperforms all bout-selection strategies (v3)
+  2. Bout META-features (longest bout, bout CV) are more predictive than bout CONTENT features
+  3. Self-referencing selects "typical" walking but 6MWD correlates with "best" walking capacity
+  4. Best single daily segment is informative (stride_time_mean rho=-0.41) but noisy
+  5. Activity intensity features (p95, pct_vigorous) add unique signal not captured by gait
+  6. Feature count sweet spot: 13-25 total features (8-20 + Demo5)
+
+========================================================================
+OVERALL BEST CLINIC-FREE RESULT
+========================================================================
+  Top-20 correlated features + Demo(5), Ridge alpha=20
+  R²=0.441  MAE=191ft  r=0.664  rho=0.633
+
+  Gap to clinic-informed: 0.507 - 0.441 = 0.066 R² (was 0.126 before)
+  Improvement over old clinic-free: 0.441 - 0.381 = +0.060 R² (+16% relative)
+
+DO NOT REPEAT:
+  - Self-referencing / consensus bout selection (selects typical, not best)
+  - Population-mean bout selection
+  - All-features models (>50 features with n=101)
+  - Activity-only models (weak standalone)
+  - Longer windows with ENMO ranking (dilutes signal)

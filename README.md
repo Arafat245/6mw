@@ -6,11 +6,20 @@ Predicting 6MWD from hip-worn accelerometer data collected during clinic 6-minut
 
 ## Best Results (Current)
 
-| Model | R² | MAE (ft) | r | ρ |
-|---|---|---|---|---|
-| **Clinic:** Gait+CWT+WalkSway+Demo (55f), Ridge α=10 | **0.806** | 100 | 0.898 | 0.889 |
-| **Home (with PLS):** PLS(Gait)+Demo(5) (7f), Ridge α=20 | **0.519** | 172 | 0.720 | 0.703 |
-| **Home (no PLS):** Gait+Demo(5) (16f), Ridge α=50 | **0.488** | 175 | 0.700 | 0.692 |
+| Feature Set | #f | Home MAE (ft) | Home ρ | Home R² | Clinic MAE (ft) | Clinic ρ | Clinic R² |
+|---|---|---|---|---|---|---|---|
+| Gait | H:11, C:11 | 242 | 0.245 | 0.036 | 140 | 0.801 | 0.682 |
+| CWT | H:28, C:28 | 243 | 0.269 | 0.034 | 197 | 0.601 | 0.357 |
+| WalkSway | H:12, C:12 | 244 | -0.038 | -0.030 | 178 | 0.715 | 0.403 |
+| PerBout-Top20 | 20 | 220 | 0.423 | 0.162 | — | — | — |
+| Demo | H:5, C:4 | 203 | 0.588 | 0.355 | 218 | 0.524 | 0.305 |
+| **PerBout-Top20+Demo** | **H:25, C:4** | **191** | **0.633** | **0.441** | 218 | 0.524 | 0.305 |
+| **Gait+CWT+WalkSway+Demo** | **H:56, C:55** | 216 | 0.521 | 0.232 | **102** | **0.880** | **0.806** |
+
+- **Home**: First 6 min of longest clinic-free bout + PerBout-Top20 aggregated features. Demo(5) with BMI.
+- **Clinic**: Full 6MWT. Demo(4) without BMI.
+- **n=101**, LOO CV, Ridge regression with alpha search.
+- Home is fully **clinic-free** — no clinic data used anywhere.
 
 ## Folder Summary
 
@@ -247,35 +256,30 @@ python clinic/extract_walking_sway.py  # also: python home/extract_walking_sway.
 
 12 ENMO-normalized sway features (same function as clinic, different input data).
 
-### Step H3: Home Prediction
+### Step H3: Home Prediction (Clinic-Free)
 
-**Best Home with PLS (R²=0.519):**
-- Features: PLS(2 components from Gait11) + Demo(5) = 7 features
-- Gait from: `home_hybrid_v2_features.npz` X_gait[:, :11]
-- PLS target: clinic gait features from `reproduce_c2.py:extract_gait10()`
+**Best Home (R²=0.441) — fully clinic-free:**
+- Features: Top-20 per-bout aggregated features + Demo(5) = 25 features
+- Walking detection: ENMO threshold + harmonic ratio (no clinic reference)
+- Per-bout feature extraction with cadence ≥ 1.0 Hz filter
+- Aggregation: median, IQR, p10, p90, max, CV across all valid walking bouts
 - Model: Ridge α=20, LOO CV
-- **Requires paired clinic data** for PLS training
-
-**Best Home without PLS (R²=0.488):**
-- Features: Gait(11) + Demo(5) = 16 features
-- Model: Ridge α=50, LOO CV
-- **Note:** Home gait features still use clinic data as reference during bout selection (Step H1.3)
+- **No clinic data used anywhere** — suitable for deployment without a clinic visit
 
 ```
-Best Home Result (PLS):
-  All:     R²=0.519, MAE=172 ft, r=0.720, ρ=0.703
-  POMS:    R²=0.405
-  Healthy: R²=0.354
-
-Best Home Result (no PLS):
-  All:     R²=0.488, MAE=175 ft, r=0.700, ρ=0.692
-  POMS:    R²=0.331
-  Healthy: R²=0.346
+Best Home Result (clinic-free):
+  All:     R²=0.441, MAE=191 ft, r=0.664, ρ=0.633
 ```
+
+**Top predictive features (all clinic-free):**
+- Bout meta: longest bout duration (ρ=0.42), bout duration CV (ρ=0.41)
+- Activity: peak daily ENMO (ρ=0.40), vigorous activity % (ρ=0.39)
+- Gait quality: best step regularity (ρ=0.38), median jerk (ρ=0.34)
 
 **To reproduce:**
 ```bash
-python analysis/results_table_final.py  # rows: PLS(Gait)+Demo(5), Gait+Demo(5) [no clinic]
+python home/extract_clinicfree_features.py  # extracts PerBout-Top20 features → feats/
+python analysis/results_table_final.py       # full 7-row results table (home + clinic)
 ```
 
 ---
@@ -346,7 +350,8 @@ Continuous wavelet transform: mean_energy, high_freq_energy, dominant_freq, esti
 |---|---|
 | `clinic/reproduce_c2.py` | Clinic preprocessing + Gait/CWT extraction |
 | `clinic/extract_walking_sway.py` | Clinic WalkSway features |
-| `home/home_hybrid_models_v2.py` | **Home gait feature extraction** (creates home_hybrid_v2_features.npz) |
+| `home/extract_clinicfree_features.py` | **Home clinic-free feature extraction** (creates home_clinicfree_top20.npz) |
+| `home/home_hybrid_models_v2.py` | Home gait extraction (legacy, clinic-informed) |
 | `home/preprocess_raw.py` | GT3X → daytime CSV → walking_segments |
 | `home/extract_walking_sway.py` | Home WalkSway features |
 | `home/extract_agd_features.py` | AGD epoch features |
@@ -356,12 +361,12 @@ Continuous wavelet transform: mean_energy, high_freq_energy, dominant_freq, esti
 
 ## Important Notes
 
-### Two Home Pipelines
-1. **`home/home_hybrid_models_v2.py`** (PRIMARY): Clinic-informed bout selection, Rodrigues rotation, bandpass → `home_hybrid_v2_features.npz` → **all home gait features**
-2. **`home/preprocess_raw.py`** (SECONDARY): Simpler detection, gravity projection, no bandpass → `walking_segments/` → **WalkSway features only**
+### Clinic-Free Home Pipeline
+The home model uses **no clinic data at all**. Walking bouts are detected using ENMO thresholding + harmonic ratio refinement (no cosine similarity to clinic signature). Features are extracted per-bout and aggregated with robust statistics (median, IQR, percentiles, CV). The top 20 features by Spearman correlation with 6MWD are selected. See `home/extract_clinicfree_features.py`.
 
-### Clinic-Informed Home Features
-Home gait features use clinic data as reference during bout selection (`select_walking_segment()` cosine similarity). Even the "no PLS" model implicitly uses clinic data during feature extraction.
+### Legacy Home Pipelines (archived)
+1. **`home/home_hybrid_models_v2.py`**: Clinic-informed bout selection via cosine similarity — no longer used for best results
+2. **`home/preprocess_raw.py`**: Simpler detection → `walking_segments/` → WalkSway features
 
 ### Archive
 Old experimental scripts (exp1-exp11, run_all_models, predict_6mwd_*, etc.) are in `archive/`. These were used during development but are NOT part of the final pipeline.
@@ -378,8 +383,9 @@ Old experimental scripts (exp1-exp11, run_all_models, predict_6mwd_*, etc.) are 
 
 ## Results History
 
-| Date | Change | Clinic R² | Home R² (PLS) | Home R² (no PLS) |
-|---|---|---|---|---|
-| Initial | Gait13+CWT+Demo, PLS(Gait)+Demo(3) | 0.792 | 0.483 | 0.428 |
-| +WalkSway | Gait11+CWT+WalkSway+Demo | 0.806 | 0.483 | 0.428 |
-| +Demo(5)+α | Added Height+BMI, tuned α | 0.806 | **0.519** | **0.488** |
+| Date | Change | Clinic R² | Home R² |
+|---|---|---|---|
+| Initial | Gait13+CWT+Demo | 0.792 | 0.428 |
+| +WalkSway | Gait11+CWT+WalkSway+Demo | 0.806 | 0.428 |
+| +Demo(5)+α | Added Height+BMI, tuned α | 0.806 | 0.488 |
+| **Clinic-free** | Per-bout aggregation, no clinic data dependency | 0.806 | **0.441** |
