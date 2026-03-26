@@ -123,10 +123,11 @@ demo['cohort'] = demo['ID'].str.extract(r'^([A-Z])')[0]
 demo['subj_id'] = demo['ID'].str.extract(r'(\d+)')[0].astype(int)
 p = ids102[clinic_valid].reset_index(drop=True).merge(demo, on=['cohort','subj_id'], how='left')
 p['cohort_M'] = (p['cohort']=='M').astype(int)
-for c in ['Age','Sex','Height']: p[c] = pd.to_numeric(p[c], errors='coerce')
+for c in ['Age','Sex','Height','BMI']: p[c] = pd.to_numeric(p[c], errors='coerce')
 X_demo_4 = p[['cohort_M','Age','Sex','Height']].values.astype(float)
 X_demo_3 = p[['cohort_M','Age','Sex']].values.astype(float)
-for X in [X_demo_4, X_demo_3]:
+X_demo_5 = p[['cohort_M','Age','Sex','Height','BMI']].values.astype(float)
+for X in [X_demo_4, X_demo_3, X_demo_5]:
     for j in range(X.shape[1]):
         m = np.isnan(X[:,j])
         if m.any(): X[m,j] = np.nanmedian(X[:,j])
@@ -147,10 +148,10 @@ n = len(y)
 # LOO FUNCTIONS
 # ══════════════════════════════════════════════════════════════════
 
-def loo(X, y):
+def loo(X, y, alpha=10):
     pr = np.zeros(len(y))
     for tr, te in LeaveOneOut().split(X):
-        sc = StandardScaler(); m = Ridge(alpha=10)
+        sc = StandardScaler(); m = Ridge(alpha=alpha)
         m.fit(sc.fit_transform(X[tr]), y[tr]); pr[te] = m.predict(sc.transform(X[te]))
     return round(r2_score(y, pr), 4)
 
@@ -213,19 +214,15 @@ add('Gait+CWT+WalkSway+Demo', 'Home: 11+28+12+3=54, Clinic: 11+28+12+4=55',
     loo(np.column_stack([X_home_gait, X_home_cwt, X_home_ws, X_demo_3]), y),
     loo(np.column_stack([X_clinic_gait, X_clinic_cwt, X_clinic_ws, X_demo_4]), y))
 
-# PLS (home only)
-add('PLS(Gait)', '2 PLS components',
-    loo_pls(X_home_gait, X_clinic_gait, np.zeros((n,0)), y, nc=2), '—')
-add('PLS(Gait)+Demo', '2 PLS + 3 Demo = 5',
-    loo_pls(X_home_gait, X_clinic_gait, X_demo_3, y, nc=2), '—')
-add('PLS(Gait+WalkSway)', '2 PLS components',
-    loo_pls(np.column_stack([X_home_gait, X_home_ws]),
-            np.column_stack([X_clinic_gait, X_clinic_ws]),
-            np.zeros((n,0)), y, nc=2), '—')
-add('PLS(Gait+WalkSway)+Demo', '2 PLS + 3 Demo = 5',
-    loo_pls(np.column_stack([X_home_gait, X_home_ws]),
-            np.column_stack([X_clinic_gait, X_clinic_ws]),
-            X_demo_3, y, nc=2), '—')
+# Best Home (no clinic): Gait+Demo(5), Ridge α=50
+add('Gait+Demo(5) [no clinic]', 'Home: 11+5=16',
+    loo(np.column_stack([X_home_gait, X_demo_5]), y, alpha=50), '—')
+
+# PLS (home only, needs clinic for training)
+add('PLS(Gait)+Demo(3)', '2 PLS + 3 Demo = 5',
+    loo_pls(X_home_gait, X_clinic_gait, X_demo_3, y, nc=2, alpha=10), '—')
+add('PLS(Gait)+Demo(5)', '2 PLS + 5 Demo = 7',
+    loo_pls(X_home_gait, X_clinic_gait, X_demo_5, y, nc=2, alpha=20), '—')
 
 # Foundation models
 add('MOMENT PCA50', '50', loo(Eh_pca50, y), loo(Ec_pca50, y))
@@ -242,5 +239,5 @@ add('LimuBERT+Demo', f'Home: {nl}+3={nl+3}, Clinic: {nl}+4={nl+4}',
 rdf = pd.DataFrame(results)
 rdf.to_csv('feats/results_table_final.csv', index=False)
 print(f"\n{'='*90}")
-print(f"n={n}, LOO CV, Ridge(α=10)")
+print(f"n={n}, LOO CV, Ridge (α=10 clinic, α=50 best home, α=20 best PLS)")
 print(f"Saved feats/results_table_final.csv")

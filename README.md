@@ -275,7 +275,7 @@ Best Home Result (no PLS):
 
 **To reproduce:**
 ```bash
-python analysis/results_table_final.py  # rows: PLS(Gait)+Demo, Gait+Demo
+python analysis/results_table_final.py  # rows: PLS(Gait)+Demo(5), Gait+Demo(5) [no clinic]
 ```
 
 ---
