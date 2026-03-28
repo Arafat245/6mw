@@ -12,13 +12,13 @@ Predicting 6MWD from hip-worn accelerometer data collected during clinic 6-minut
 | CWT | H:28, C:28 | 243 | 0.269 | 0.034 | 197 | 0.601 | 0.357 |
 | WalkSway | H:12, C:12 | 244 | -0.038 | -0.030 | 178 | 0.715 | 0.403 |
 | PerBout-Top20 | 20 | 220 | 0.423 | 0.162 | — | — | — |
-| Demo | H:5, C:4 | 203 | 0.588 | 0.355 | 218 | 0.524 | 0.305 |
-| **PerBout-Top20+Demo** | **H:25, C:4** | **191** | **0.633** | **0.441** | 218 | 0.524 | 0.305 |
+| Demo | H:4, C:4 | 203 | 0.588 | 0.355 | 218 | 0.524 | 0.305 |
+| **PerBout-Top20+Demo (best home)** | **H:24, C:4** | **189** | **0.638** | **0.447** | 218 | 0.524 | 0.305 |
 | **Gait+CWT+WalkSway+Demo** | **H:56, C:55** | 216 | 0.521 | 0.232 | **102** | **0.880** | **0.806** |
 
-- **Home**: First 6 min of longest clinic-free bout + PerBout-Top20 aggregated features. Demo(5) with BMI.
+- **Home best**: PerBout-Top20 + Demo(4) = 24 features. Fully **clinic-free**, no feature selection leakage.
 - **Clinic**: Full 6MWT. Demo(4) without BMI.
-- **n=101**, LOO CV, Ridge regression with alpha search.
+- **n=101**, LOO CV, Ridge α=10.
 - Home is fully **clinic-free** — no clinic data used anywhere.
 
 ## Folder Summary
@@ -258,17 +258,17 @@ python clinic/extract_walking_sway.py  # also: python home/extract_walking_sway.
 
 ### Step H3: Home Prediction (Clinic-Free)
 
-**Best Home (R²=0.441) — fully clinic-free:**
-- Features: Top-20 per-bout aggregated features + Demo(5) = 25 features
+**Best Home (R²=0.447) — fully clinic-free, no feature selection leakage:**
+- Demo(4): cohort_POMS, Age, Sex, BMI
+- PerBout-Top20: top 20 per-bout aggregated features by Spearman correlation with 6MWD
 - Walking detection: ENMO threshold + harmonic ratio (no clinic reference)
-- Per-bout feature extraction with cadence ≥ 1.0 Hz filter
-- Aggregation: median, IQR, p10, p90, max, CV across all valid walking bouts
-- Model: Ridge α=20, LOO CV
-- **No clinic data used anywhere** — suitable for deployment without a clinic visit
+- Per-bout feature extraction with cadence ≥ 1.0 Hz filter, aggregated with robust statistics (median, IQR, p10, p90, max, CV)
+- Model: Ridge α=10, LOO CV
+- **No clinic data used anywhere**
 
 ```
 Best Home Result (clinic-free):
-  All:     R²=0.441, MAE=191 ft, r=0.664, ρ=0.633
+  All:     R²=0.447, MAE=189 ft, ρ=0.638
 ```
 
 **Top predictive features (all clinic-free):**
@@ -388,4 +388,4 @@ Old experimental scripts (exp1-exp11, run_all_models, predict_6mwd_*, etc.) are 
 | Initial | Gait13+CWT+Demo | 0.792 | 0.428 |
 | +WalkSway | Gait11+CWT+WalkSway+Demo | 0.806 | 0.428 |
 | +Demo(5)+α | Added Height+BMI, tuned α | 0.806 | 0.488 |
-| **Clinic-free** | Per-bout aggregation, no clinic data dependency | 0.806 | **0.441** |
+| **Clinic-free** | PerBout-Top20 + Demo(4), no leakage | 0.806 | **0.447** |
