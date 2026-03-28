@@ -34,7 +34,7 @@ Predicting 6-Minute Walk Distance (6MWD) from hip-worn accelerometer data in Ped
 - **Tables go to `POMS/tables/`, figures to `POMS/figures/`.**
 
 ### Models
-- **Ridge regression** is the primary model. Current best alphas: Clinic=10, Home=5.
+- **Ridge regression** is the primary model. Current best alphas: Clinic=10, Home=20.
 - **Foundation models** (MOMENT, Chronos, LimuBERT) are comparison baselines only. Handcrafted features beat them.
 - **DL models** (TCN, LSTM, Transformer) are used separately from foundation models, not mixed.
 
@@ -43,7 +43,7 @@ Predicting 6-Minute Walk Distance (6MWD) from hip-worn accelerometer data in Ped
 | Setting | Features | R² | MAE (ft) | ρ |
 |---|---|---|---|---|
 | Clinic | Gait+CWT+WalkSway+Demo (55f) | 0.806 | 102 | 0.880 |
-| Home (clinic-free) | FwdSel+CWT-PerBout+Demo (30f) | 0.736 | 132 | 0.823 |
+| Home (clinic-free) | PerBout-Top20+Demo(4) (24f) | 0.451 | 183 | 0.658 |
 
 ## Reproducing Home Best (R²=0.555)
 

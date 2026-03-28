@@ -13,17 +13,28 @@ Predicting 6MWD from hip-worn accelerometer data collected during clinic 6-minut
 | WalkSway | H:12, C:12 | 244 | -0.038 | -0.030 | 178 | 0.715 | 0.403 |
 | PerBout-Top20 | 20 | 220 | 0.423 | 0.162 | — | — | — |
 | Demo | H:5, C:4 | 203 | 0.588 | 0.355 | 218 | 0.524 | 0.305 |
-| PerBout-Top20+Demo | H:25, C:4 | 191 | 0.633 | 0.441 | 218 | 0.524 | 0.305 |
-| Forward-Selected+Demo | 30 | 166 | 0.717 | 0.555 | — | — | — |
-| FwdSel+FindWalking+Demo | 30 | 156 | 0.787 | 0.628 | — | — | — |
-| **FwdSel+CWT-PerBout+Demo** | **30** | **132** | **0.823** | **0.736** | — | — | — |
+| **PerBout-Top20+Demo** | **24** | **183** | **0.658** | **0.451** | 218 | 0.524 | 0.305 |
 | **Gait+CWT+WalkSway+Demo** | **H:56, C:55** | 216 | 0.521 | 0.232 | **102** | **0.880** | **0.806** |
 
-- **Home (best)**: Forward-selected 30 features from 153 orig per-bout + 124 CWT per-bout + 25 fw summary + Demo(5) = 307 candidates. Ridge alpha=5, LOO CV.
-- **Home (previous)**: PerBout-Top20 + Demo(5), Ridge alpha=20.
+- **Home (best)**: Top-20 per-bout features (Spearman inside LOO, no leakage) + Demo(4). Ridge alpha=20, LOO CV.
+- **Demo(4)**: cohort_POMS, Age, Sex, BMI. Height dropped (redundant with BMI).
 - **Clinic**: Full 6MWT. Demo(4) without BMI.
-- **n=101**, LOO CV, Ridge regression with alpha search.
+- **n=101**, LOO CV, Ridge regression.
 - Home is fully **clinic-free** — no clinic data used anywhere.
+- **Feature selection**: Spearman correlation inside each LOO fold (no data leakage). Compared 8 methods; Spearman best.
+
+### Feature Selection Comparison (inside LOO, no leakage)
+
+| Method | R² | MAE | rho | Time |
+|---|---|---|---|---|
+| **Spearman** | **0.451** | **183** | **0.658** | **4s** |
+| ANOVA-F | 0.416 | 193 | 0.620 | 0s |
+| Pearson | 0.416 | 193 | 0.620 | 2s |
+| ReliefF | 0.364 | 201 | 0.607 | 0s |
+| Chi-Square | 0.358 | 201 | 0.589 | 42s |
+| Decision Tree | 0.355 | 199 | 0.599 | 1s |
+| Mutual Info | 0.338 | 204 | 0.562 | 10s |
+| PCA (20 comp) | 0.077 | 237 | 0.341 | 1s |
 
 ## Folder Summary
 
@@ -385,7 +396,8 @@ Continuous wavelet transform: mean_energy, high_freq_energy, dominant_freq, esti
 
 ### Demographics
 - **Demo(3):** cohort_POMS, Age, Sex
-- **Demo(5):** cohort_POMS, Age, Sex, Height, BMI
+- **Demo(4):** cohort_POMS, Age, Sex, BMI (Height dropped — redundant with BMI)
+- **Demo(5):** cohort_POMS, Age, Sex, Height, BMI (legacy)
 
 ---
 
@@ -408,7 +420,7 @@ Continuous wavelet transform: mean_energy, high_freq_energy, dominant_freq, esti
 ## Important Notes
 
 ### Clinic-Free Home Pipeline
-The home model uses **no clinic data at all**. Walking bouts are detected using ENMO thresholding + harmonic ratio refinement (no cosine similarity to clinic signature). Features are extracted per-bout and aggregated with robust statistics (median, IQR, percentiles, CV). 153 features are extracted (124 gait + 29 activity). Forward feature selection with LOO Ridge CV selects the best 30 features (R²=0.555). See `temporary_experiments/step1_extract_and_predict.py` and `step2_goldman_features.py`.
+The home model uses **no clinic data at all**. Walking bouts are detected using ENMO thresholding + harmonic ratio refinement (no cosine similarity to clinic signature). Features are extracted per-bout and aggregated with robust statistics (median, IQR, percentiles, CV). 153 features are extracted (124 gait + 29 activity). Top-20 features selected by Spearman correlation inside each LOO fold (no data leakage) + Demo(4) = 24 features. Ridge alpha=20. R²=0.451. See `temporary_experiments/step1_extract_and_predict.py`.
 
 ### Legacy Home Pipelines (archived)
 1. **`home/home_hybrid_models_v2.py`**: Clinic-informed bout selection via cosine similarity — no longer used for best results
@@ -435,6 +447,7 @@ Old experimental scripts (exp1-exp11, run_all_models, predict_6mwd_*, etc.) are 
 | +WalkSway | Gait11+CWT+WalkSway+Demo | 0.806 | 0.428 |
 | +Demo(5)+α | Added Height+BMI, tuned α | 0.806 | 0.488 |
 | Clinic-free | Per-bout aggregation, no clinic data dependency | 0.806 | 0.441 |
-| Forward selection | 30 features from 153 per-bout+activity, forward-selected | 0.806 | 0.555 |
-| +find_walking | 30 features from 153 per-bout + 25 CWT find_walking + demo, forward-selected | 0.806 | 0.628 |
-| **+CWT per-bout** | 30 features from 307 (orig+CWT per-bout+fw+demo), forward-selected | 0.806 | **0.736** |
+| Forward selection | 30f forward-selected (data leakage — inflated) | 0.806 | 0.555* |
+| +find_walking | 30f + CWT find_walking (data leakage — inflated) | 0.806 | 0.628* |
+| +CWT per-bout | 30f from 307 candidates (data leakage — inflated) | 0.806 | 0.736* |
+| **Honest eval** | **Top-20 Spearman inside LOO + Demo(4), no leakage** | **0.806** | **0.451** |
