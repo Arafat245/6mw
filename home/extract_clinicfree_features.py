@@ -325,10 +325,12 @@ def extract_activity_features(xyz, fs):
 # MAIN: Extract + cache features
 # ══════════════════════════════════════════════════════════════════
 
-def extract_all_features(ids_df):
-    """Extract clinic-free features for all subjects. Returns (gait_agg_dict, activity_dict) per subject."""
+def extract_all_features(ids_df, save_bouts=True):
+    """Extract clinic-free features for all subjects. Returns DataFrame.
+    If save_bouts=True, saves each walking bout as CSV in walking_bouts/ folder."""
     gait_feat_names = None
     results = []
+    BOUT_DIR = BASE / 'walking_bouts'
 
     for i, (_, r) in enumerate(ids_df.iterrows()):
         fn = f"{r['cohort']}{int(r['subj_id']):02d}_{int(r['year'])}_{int(r['sixmwd'])}.csv"
@@ -343,6 +345,21 @@ def extract_all_features(ids_df):
 
         # Per-bout gait features
         bouts = detect_walking_bouts(xyz, FS, min_bout_sec=10, merge_gap_sec=5)
+
+        # Save walking bouts
+        if save_bouts and bouts:
+            subj_id = f"{r['cohort']}{int(r['subj_id']):02d}"
+            subj_bout_dir = BOUT_DIR / subj_id
+            subj_bout_dir.mkdir(parents=True, exist_ok=True)
+            for bout_idx, (s, e) in enumerate(bouts):
+                dur_sec = (e - s) / FS
+                bout_df = pd.DataFrame({
+                    'X': xyz[s:e, 0],
+                    'Y': xyz[s:e, 1],
+                    'Z': xyz[s:e, 2],
+                })
+                bout_df.to_csv(subj_bout_dir / f"bout_{bout_idx+1:04d}_{dur_sec:.0f}s.csv", index=False)
+
         bout_feats = []
         for s, e in bouts:
             feats = extract_bout_features(xyz[s:e], FS)

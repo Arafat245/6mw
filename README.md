@@ -210,7 +210,8 @@ python home/preprocess_raw.py
 ### Step H1: Walking Bout Detection
 
 **Script:** `home/extract_clinicfree_features.py` → `detect_walking_bouts()`
-**Input:** `csv_home_daytime/*.csv` (X, Y, Z at 30 Hz)
+**Input:** `csv_home_daytime/*.csv` — columns: X, Y, Z, fs (30 Hz home accelerometer)
+**Output:** `walking_bouts/{subj_id}/bout_0001_{dur}s.csv` — one CSV per bout with columns X, Y, Z. 135,958 total bout files across 101 subjects.
 
 Three-stage detection with no clinic reference:
 
@@ -242,6 +243,8 @@ Three-stage detection with no clinic reference:
 ### Step H2: Per-Bout Preprocessing
 
 **Script:** `home/extract_clinicfree_features.py` → `extract_bout_features()` → `preprocess_segment()`
+**Input:** Each bout from `walking_bouts/{subj_id}/bout_*.csv` (X, Y, Z)
+**Output:** Preprocessed arrays: AP, ML, VT, AP_bp, ML_bp, VT_bp, ENMO, VM_dyn (in memory, not saved)
 
 For each walking bout independently (no concatenation of distant bouts):
 
@@ -272,6 +275,8 @@ For each walking bout independently (no concatenation of distant bouts):
 ### Step H3: Per-Bout Feature Extraction (20 features)
 
 **Script:** `home/extract_clinicfree_features.py` → `extract_bout_features()`
+**Input:** Preprocessed bout arrays from Step H2
+**Output:** 20-element feature dictionary per valid bout (in memory)
 
 Minimum bout length for feature extraction: **10 seconds** (300 samples at 30 Hz).
 Bouts with estimated cadence < **1.0 Hz** are rejected (not true walking).
@@ -304,6 +309,8 @@ Bouts with estimated cadence < **1.0 Hz** are rejected (not true walking).
 ### Step H4: Aggregation Across Bouts (124 gait features + 4 meta)
 
 **Script:** `home/extract_clinicfree_features.py` → `extract_all_features()`
+**Input:** Per-bout feature dictionaries from Step H3 (all valid bouts per subject)
+**Output:** 124 gait features per subject (in memory, saved in Step H5)
 
 For each of the 20 per-bout features, compute **6 robust statistics** across all valid bouts:
 
@@ -332,6 +339,10 @@ Plus **4 bout meta-features:**
 ### Step H5: Activity Features (29 features, whole recording)
 
 **Script:** `home/extract_clinicfree_features.py` → `extract_activity_features()`
+**Input:** `csv_home_daytime/*.csv` — full daytime recording (X, Y, Z at 30 Hz)
+**Output:** 29 activity features per subject. Combined with Step H4 → saved as:
+- `feats/home_clinicfree_features.csv` — 153 features × 101 subjects (124 gait + 29 activity)
+- `feats/home_clinicfree_top20.npz` — pre-selected Top-20 feature matrix
 
 Computed from the **entire daytime recording** (not just walking bouts):
 
@@ -395,7 +406,8 @@ Computed from the **entire daytime recording** (not just walking bouts):
 
 ### Step H6: Demographics (4 features)
 
-**Source:** `SwayDemographics.xlsx`
+**Input:** `SwayDemographics.xlsx` — columns: ID, Age, Sex, Height, Weight, BMI
+**Output:** 4 demographic features per subject (loaded at prediction time, not pre-saved)
 
 | Feature | Column | Description |
 |---|---|---|
@@ -453,11 +465,12 @@ Best Home Result (clinic-free, no leakage):
 ### To Reproduce
 
 ```bash
-# Step 1: Extract 153 clinic-free features (one-time, ~15 min)
+# Step 1: Extract 153 clinic-free features + save walking bouts (one-time, ~20 min)
 python home/extract_clinicfree_features.py
 # Input:  csv_home_daytime/*.csv (home accelerometer, 101 subjects)
 # Output: feats/home_clinicfree_features.csv (153 features × 101 subjects)
 #         feats/home_clinicfree_top20.npz (pre-selected top-20)
+#         walking_bouts/{subj_id}/bout_*.csv (135,958 bout files, X/Y/Z per bout)
 
 # Step 2: Reproduce R²=0.462 with Spearman inside LOO (no leakage, ~1 min)
 python analysis/reproduce_home_result.py
