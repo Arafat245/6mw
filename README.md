@@ -163,155 +163,269 @@ python analysis/results_table_final.py  # row: Gait+CWT+WalkSway+Demo
 
 ---
 
-## HOME PIPELINE
+## HOME PIPELINE (Clinic-Free)
+
+**No clinic data used anywhere.** The home pipeline is fully self-contained.
 
 ### Step H0: GT3X → Home Daytime CSV (already done)
 
-**Script:** `preprocess_raw.py` → `load_gt3x()`, `extract_daytime()`
-**Input:** `Accel files/*/*.gt3x`
-**Output:** `csv_home_daytime/*.csv` (X, Y, Z, ~4M samples per subject)
+**Script:** `home/preprocess_raw.py` → `load_gt3x()`, `extract_daytime()`
+**Input:** `Accel files/*/*.gt3x` — raw ActiGraph GT3X binary files (30 Hz, ±6g, hip-worn)
+**Output:** `csv_home_daytime/*.csv` — columns: X, Y, Z, fs (102 files, ~35 GB total)
 
 ```bash
 python home/preprocess_raw.py
 ```
 
-1. Read GT3X binary → timestamps + X, Y, Z at 30 Hz
-2. Extract daytime (7 AM – 10 PM) with worn-time detection (rolling std > 0.01)
+1. Read GT3X binary via `pygt3x` → timestamps + X, Y, Z at 30 Hz
+2. Extract daytime only: keep hours 7:00 AM – 10:00 PM
+3. Worn-time detection: rolling 5-second std of VM > 0.01 (remove non-worn periods)
+4. Save as CSV with columns X, Y, Z, fs=30
 
-### Step H1: Home Gait Feature Extraction (PRIMARY pipeline)
+**Output per subject:** 36–107 hours of daytime data (~1–4 million samples)
 
-**IMPORTANT:** Home gait features are created by `home_hybrid_models_v2.py`, NOT `preprocess_raw.py`.
+**Naming convention:** `{cohort}{subj_id:02d}_{year}_{sixmwd}.csv` (e.g., `C01_2016_2147.csv`)
 
-**Script:** `home_hybrid_models_v2.py`
-**Input:** `csv_home_daytime/*.csv` + `csv_raw2/*.csv` (clinic data as reference)
-**Output:** `feats/home_hybrid_v2_features.npz`
+### Step H1: Walking Bout Detection
 
-```bash
-python home/home_hybrid_models_v2.py
-# Then save: np.savez('feats/home_hybrid_v2_features.npz', X_gait=X_gait, X_act=X_act, X_cent=X_cent, X_cwt=X_cwt, X_demo=X_demo, y=y)
-```
+**Script:** `home/extract_clinicfree_features.py` → `detect_walking_bouts()`
+**Input:** `csv_home_daytime/*.csv` (X, Y, Z at 30 Hz)
 
-Steps:
+Three-stage detection with no clinic reference:
 
-1. **`detect_active_bouts(xyz, fs, min_bout_sec=30)`**
-   - ENMO per second ≥ 0.015 → active
-   - Merge consecutive active seconds into bouts (min 30 sec)
+**Stage 1 — ENMO Thresholding:**
+1. Compute vector magnitude: VM = sqrt(X² + Y² + Z²)
+2. Compute ENMO = max(VM - 1.0, 0) — removes gravity, keeps dynamic acceleration
+3. Average ENMO into 1-second bins (30 samples per bin)
+4. Mark seconds with mean ENMO ≥ **0.015g** as "active"
+5. Group consecutive active seconds into bouts
+6. Discard bouts shorter than **10 seconds**
 
-2. **`refine_with_hr(xyz, fs, bouts, hr_threshold=0.2)`**
-   - Bandpass VM at 0.5–3.0 Hz
-   - 10-sec windows: FFT → harmonic ratio (even/odd harmonics)
-   - Keep windows with HR ≥ 0.2 (periodic walking confirmed)
-   - Merge into refined bouts (min 30 sec)
+**Stage 2 — Harmonic Ratio Refinement:**
+1. Bandpass filter VM at **0.5–3.0 Hz** (4th-order Butterworth, zero-phase `filtfilt`)
+2. Slide **10-second non-overlapping windows** through each active bout
+3. Per window:
+   - FFT on bandpass-filtered VM segment
+   - Find dominant frequency in **0.8–3.5 Hz** band
+   - Compute harmonic ratio: HR = Σ(even harmonics at 2f, 4f, ...) / Σ(odd harmonics at f, 3f, 5f, ...) up to 10 harmonics
+4. Keep windows with HR ≥ **0.2** (confirms periodic walking pattern)
+5. Merge adjacent passing windows; discard merged segments < **10 seconds**
+6. If no windows pass HR filter in a bout, keep the original bout as fallback
 
-3. **`select_walking_segment(xyz, fs, bouts, target_sec=360, clinic_xyz, clinic_fs)`**
-   - Compute walking signature per bout: [mean_ENMO, std_ENMO, cadence, step_regularity, ...]
-   - Compute clinic 6MWT walking signature (loaded from `csv_raw2/`)
-   - Rank bouts by **cosine similarity to clinic** signature
-   - Select most clinic-like bouts up to **360 seconds** (6 minutes)
-   - **Uses clinic data as reference for bout selection**
+**Stage 3 — Merge Adjacent Bouts:**
+1. If gap between two refined bouts ≤ **5 seconds** → merge into one bout
+2. Bouts farther apart remain separate
 
-4. **`preprocess_walking(walking_xyz, fs)`**
-   - Gravity removal (0.25 Hz lowpass)
-   - **Rodrigues rotation** (same as clinic)
-   - PCA yaw → AP, ML, VT
-   - Bandpass for _bp variants + ENMO
+**Output per subject:** List of (start_sample, end_sample) tuples. Typically 374–1,552 walking bouts per subject (median bout duration: 14 seconds).
 
-5. **`extract_gait13(preprocessed_df)`**
-   - 13 features: cadence_hz, step_time_cv_pct, acf_step_regularity, hr_ap, hr_vt, ml_rms_g, ml_spectral_entropy, jerk_mean_abs_gps, enmo_mean_g, cadence_slope_per_min, vt_rms_g, ml_over_enmo, ml_over_vt
+### Step H2: Per-Bout Preprocessing
 
-**Output NPZ contents:**
+**Script:** `home/extract_clinicfree_features.py` → `extract_bout_features()` → `preprocess_segment()`
 
-| Key | Shape | Description |
+For each walking bout independently (no concatenation of distant bouts):
+
+1. **Gravity removal:**
+   - 0.25 Hz 4th-order Butterworth lowpass → estimates gravity component
+   - Subtract gravity estimate from raw signal → dynamic acceleration
+
+2. **Rodrigues rotation:**
+   - Compute mean gravity vector from lowpass estimate
+   - Compute rotation angle between gravity vector and Z-axis [0,0,1]
+   - Apply Rodrigues rotation formula to align gravity with vertical axis
+   - Result: gravity-aligned coordinate system
+
+3. **PCA yaw alignment:**
+   - Take horizontal plane (X-Y) of rotated signal
+   - Compute 2×2 covariance matrix
+   - Eigenvector of largest eigenvalue = anterior-posterior (AP) direction
+   - Rotate by yaw angle → AP, ML (mediolateral), VT (vertical) axes
+
+4. **Bandpass filter:**
+   - 0.25–2.5 Hz, 4th-order Butterworth, zero-phase → AP_bp, ML_bp, VT_bp
+   - Isolates step-frequency band
+
+5. **Derived signals:**
+   - VM_dyn = norm(AP, ML, VT)
+   - ENMO = max(norm(raw_resampled) - 1.0, 0)
+
+### Step H3: Per-Bout Feature Extraction (20 features)
+
+**Script:** `home/extract_clinicfree_features.py` → `extract_bout_features()`
+
+Minimum bout length for feature extraction: **10 seconds** (300 samples at 30 Hz).
+Bouts with estimated cadence < **1.0 Hz** are rejected (not true walking).
+
+**20 features extracted from each valid bout:**
+
+| # | Feature | How Computed |
 |---|---|---|
-| X_gait | (102, 13) | 11 gait + 2 sway ratios |
-| X_act | (102, 15) | Activity profile features |
-| X_cent | (102, 18) | 6-minute activity centile features |
-| X_cwt | (102, 28) | CWT features |
-| X_demo | (102, 4) | Demographics |
-| y | (102,) | 6MWD targets |
+| 1 | `cadence_hz` | Peak frequency of Welch PSD of VT_bp in 0.5–3.5 Hz (nperseg=max(4×fs, 256)) |
+| 2 | `cadence_power` | Power at dominant cadence peak |
+| 3 | `acf_step_reg` | Autocorrelation of VT_bp at step lag (lag = round(fs/cadence)) |
+| 4 | `hr_ap` | Harmonic ratio of AP_bp: Σ(even harmonics) / Σ(odd harmonics) at cadence multiples, up to 10 harmonics |
+| 5 | `hr_vt` | Harmonic ratio of VT_bp (same method) |
+| 6 | `hr_ml` | Harmonic ratio of ML_bp (same method) |
+| 7 | `stride_time_mean` | Mean inter-peak interval from VT_bp peak detection (min_distance=0.5×fs/cadence, prominence=0.5×std) |
+| 8 | `stride_time_std` | Std of inter-peak intervals (ddof=1) |
+| 9 | `stride_time_cv` | CV = std/mean of inter-peak intervals |
+| 10 | `ml_rms` | RMS of ML axis: sqrt(mean(ML²)) |
+| 11 | `vt_rms` | RMS of VT axis |
+| 12 | `ap_rms` | RMS of AP axis |
+| 13 | `enmo_mean` | Mean ENMO of bout |
+| 14 | `enmo_p95` | 95th percentile ENMO of bout |
+| 15 | `vm_std` | Std of VM_dyn |
+| 16 | `vt_range` | Peak-to-peak range of VT (max - min) |
+| 17 | `ml_range` | Peak-to-peak range of ML |
+| 18 | `jerk_mean` | Mean absolute jerk: mean(|diff(VM_dyn)| × fs) |
+| 19 | `signal_energy` | Mean of VM_dyn² |
+| 20 | `duration_sec` | Bout duration in seconds |
 
-**Verified:** Reproduced features correlate r=1.0000 with cached npz.
+### Step H4: Aggregation Across Bouts (124 gait features + 4 meta)
 
-### Step H1b: Alternative Home Walking Segments (SECONDARY pipeline)
+**Script:** `home/extract_clinicfree_features.py` → `extract_all_features()`
 
-**Script:** `preprocess_raw.py`
-**Output:** `results_raw_pipeline/walking_segments/*.csv`
+For each of the 20 per-bout features, compute **6 robust statistics** across all valid bouts:
 
-Different from H1:
-- Detection: RMS + std + autocorrelation (min 20 sec)
-- Preprocessing: gravity projection (not Rodrigues), no bandpass
-- No clinic-informed bout selection
-- **Used only for WalkSway features**, NOT for main gait features
+| Stat | Suffix | What it captures |
+|---|---|---|
+| Median | `_med` | Typical bout value |
+| IQR | `_iqr` | Spread (75th - 25th percentile) |
+| 10th percentile | `_p10` | Worst/lowest bouts |
+| 90th percentile | `_p90` | Best/highest bouts |
+| Maximum | `_max` | Peak capacity |
+| CV | `_cv` | Consistency across bouts (std/mean) |
 
-### Step H2: Home WalkSway Features
+→ 20 features × 6 stats = **120 gait-aggregated features**
 
-**Script:** `extract_walking_sway.py`
-**Input:** `results_raw_pipeline/walking_segments/*.csv`
-**Output:** `feats/home_walking_sway.csv`
+Plus **4 bout meta-features:**
 
-```bash
-python clinic/extract_walking_sway.py  # also: python home/extract_walking_sway.py
-```
+| Feature | Description |
+|---|---|
+| `g_n_valid_bouts` | Number of valid walking bouts (after cadence filter) |
+| `g_total_walk_sec` | Total walking seconds across all valid bouts |
+| `g_mean_bout_dur` | Mean bout duration (seconds) |
+| `g_bout_dur_cv` | CV of bout durations (std/mean) |
 
-12 ENMO-normalized sway features (same function as clinic, different input data).
+→ **124 gait features total**
 
-### Step H3: Home Prediction (Clinic-Free)
+### Step H5: Activity Features (29 features, whole recording)
 
-**Best Home (R²=0.462) — fully clinic-free, no data leakage:**
+**Script:** `home/extract_clinicfree_features.py` → `extract_activity_features()`
 
-**Step 1: Walking Bout Detection (ENMO + Harmonic Ratio)**
-1. Load home accelerometer data from `csv_home_daytime/*.csv` (X, Y, Z at 30 Hz)
-2. Compute VM = sqrt(X²+Y²+Z²), ENMO = max(VM-1.0, 0)
-3. Average ENMO per 1-second bin; mark seconds with ENMO ≥ 0.015g as "active"
-4. Group consecutive active seconds into bouts (min 10 seconds)
-5. Bandpass filter VM at 0.5–3.0 Hz (4th order Butterworth)
-6. In 10-second windows: FFT → dominant frequency (0.8–3.5 Hz) → harmonic ratio (even/odd harmonics)
-7. Keep windows with HR ≥ 0.2 (confirms periodic walking)
-8. Merge adjacent bouts within 5-second gap
+Computed from the **entire daytime recording** (not just walking bouts):
 
-**Step 2: Per-Bout Feature Extraction (20 features per bout)**
-For each bout (min 10s):
-1. Preprocess: gravity removal (0.25 Hz lowpass), Rodrigues rotation, PCA yaw → AP, ML, VT
-2. Bandpass 0.25–2.5 Hz → AP_bp, ML_bp, VT_bp
-3. Reject bout if cadence < 1.0 Hz (not true walking)
-4. Extract 20 features: cadence_hz, cadence_power, acf_step_reg, hr_ap, hr_vt, hr_ml, stride_time_mean/std/cv, ml_rms, vt_rms, ap_rms, enmo_mean, enmo_p95, vm_std, vt_range, ml_range, jerk_mean, signal_energy, duration_sec
+**ENMO distribution (11 features):**
 
-**Step 3: Aggregation (6 stats per feature)**
-For each of 20 features, compute across all valid bouts: median, IQR, p10, p90, max, CV
-Plus 4 bout meta: n_valid_bouts, total_walk_sec, mean_bout_dur, bout_dur_cv
-→ **153 accelerometry features** (124 gait + 29 activity)
+| Feature | Description |
+|---|---|
+| `act_enmo_mean` | Mean per-second ENMO across entire recording |
+| `act_enmo_std` | Std of per-second ENMO |
+| `act_enmo_median` | Median per-second ENMO |
+| `act_enmo_p5` | 5th percentile |
+| `act_enmo_p25` | 25th percentile |
+| `act_enmo_p75` | 75th percentile |
+| `act_enmo_p95` | 95th percentile |
+| `act_enmo_iqr` | IQR (p75 - p25) |
+| `act_enmo_skew` | Skewness of ENMO distribution |
+| `act_enmo_kurtosis` | Kurtosis of ENMO distribution |
+| `act_enmo_entropy` | Shannon entropy of 20-bin histogram |
 
-**Step 4: Activity Features (whole recording, 29 features)**
-From entire daytime recording (not bout-specific): ENMO distribution, intensity zones, bout patterns, fragmentation, diurnal patterns.
+**Intensity zones (5 features):**
 
-**Step 5: Prediction (Spearman inside LOO — no leakage)**
+| Feature | Threshold | Description |
+|---|---|---|
+| `act_pct_sedentary` | ENMO < 0.02g | Fraction of time sedentary |
+| `act_pct_light` | 0.02 ≤ ENMO < 0.06g | Fraction in light activity |
+| `act_pct_moderate` | 0.06 ≤ ENMO < 0.1g | Fraction in moderate activity |
+| `act_pct_vigorous` | ENMO ≥ 0.1g | Fraction in vigorous activity |
+| `act_mvpa_min_per_hr` | ENMO ≥ 0.06g | MVPA minutes per hour |
+
+**Bout patterns (5 features):**
+
+| Feature | Description |
+|---|---|
+| `act_n_bouts` | Number of active bouts (ENMO ≥ 0.02g, min 5s) |
+| `act_bouts_per_hr` | Active bouts per hour |
+| `act_bout_mean_dur` | Mean active bout duration (seconds) |
+| `act_bout_dur_cv` | CV of active bout durations |
+| `act_longest_bout` | Duration of longest active bout (seconds) |
+
+**Transition dynamics (3 features):**
+
+| Feature | Description |
+|---|---|
+| `act_astp` | Active-to-sedentary transition probability |
+| `act_satp` | Sedentary-to-active transition probability |
+| `act_fragmentation` | ASTP + SATP (overall fragmentation index) |
+
+**Diurnal patterns (5 features):**
+
+| Feature | Description |
+|---|---|
+| `act_early_enmo` | Mean ENMO of first third of recording |
+| `act_mid_enmo` | Mean ENMO of middle third |
+| `act_late_enmo` | Mean ENMO of last third |
+| `act_early_late_ratio` | Early/late ENMO ratio |
+| `act_daily_cv` | Day-to-day CV of mean ENMO (if ≥2 days) |
+
+→ **29 activity features**
+
+**Grand total: 153 accelerometry features** (124 gait + 29 activity)
+
+### Step H6: Demographics (4 features)
+
+**Source:** `SwayDemographics.xlsx`
+
+| Feature | Column | Description |
+|---|---|---|
+| `cohort_POMS` | Derived from ID | 1 if M (POMS), 0 if C (Healthy) |
+| `Age` | Age | Age in years at time of study |
+| `Sex` | Sex | 1=Male, 2=Female |
+| `BMI` | BMI | Body Mass Index (kg/m²) |
+
+Height is NOT used (redundant with BMI). Missing values imputed with column median.
+
+### Step H7: Feature Selection + Prediction (no data leakage)
+
+**Script:** `analysis/reproduce_home_result.py`
+**Input:** `feats/home_clinicfree_features.csv` (153 features), `SwayDemographics.xlsx`, `feats/target_6mwd.csv`
+
+**Leave-One-Subject-Out Cross-Validation with nested feature selection:**
+
 ```
 For each of 101 LOO folds:
-    Hold out subject i
-    On 100 TRAINING subjects only:
-        Compute |Spearman ρ| of each 153 features with 6MWD
-        Select top 20 by |ρ|
-    Combine 20 selected + Demo(4) = 24 features
-    StandardScaler: fit on training, transform both
-    Ridge(α=20): fit on training, predict held-out subject
-Collect 101 predictions → R²=0.462, MAE=187 ft, ρ=0.661
+    1. Hold out subject i (never seen during selection or training)
+    2. On 100 TRAINING subjects only:
+       a. For each of 153 accelerometry features:
+          - Compute |Spearman ρ| between feature and 6MWD
+       b. Rank features by |ρ| descending
+       c. Select top K=20 features
+    3. Combine 20 selected accelerometry + 4 demographic = 24 features
+    4. StandardScaler: fit on 100 training subjects, transform both train and test
+    5. Ridge regression (α=20): fit on 100 training subjects
+    6. Predict held-out subject i's 6MWD
+
+Collect 101 predictions
+Compute metrics: R²=0.462, MAE=187 ft, ρ=0.661
 ```
 
-- Demo(4): cohort_POMS, Age, Sex, BMI
-- **No clinic data used anywhere**
-- **No feature selection leakage** — Spearman selection inside each LOO fold
+**Key properties:**
+- **No data leakage:** Feature selection uses only training data in each fold
+- **No clinic data:** All features from home accelerometer + demographics
+- **Reproducible:** Same result every run (deterministic algorithm)
 
 ```
-Best Home Result (clinic-free):
-  All:     R²=0.462, MAE=187 ft, ρ=0.661
+Best Home Result (clinic-free, no leakage):
+  R²=0.462, MAE=187 ft, ρ=0.661
 ```
 
-**Top predictive features (all clinic-free):**
+**Top predictive features (all clinic-free, ranked by typical Spearman |ρ| with 6MWD):**
 - Bout meta: longest bout duration (ρ=0.42), bout duration CV (ρ=0.41)
 - Activity: peak daily ENMO (ρ=0.40), vigorous activity % (ρ=0.39)
 - Gait quality: best step regularity (ρ=0.38), median jerk (ρ=0.34)
 
-**To reproduce:**
+### To Reproduce
+
 ```bash
 # Step 1: Extract 153 clinic-free features (one-time, ~15 min)
 python home/extract_clinicfree_features.py
@@ -322,7 +436,8 @@ python home/extract_clinicfree_features.py
 # Step 2: Reproduce R²=0.462 with Spearman inside LOO (no leakage, ~1 min)
 python analysis/reproduce_home_result.py
 # Input:  feats/home_clinicfree_features.csv
-#         SwayDemographics.xlsx (Demo: cohort, Age, Sex, BMI)
+#         feats/target_6mwd.csv
+#         SwayDemographics.xlsx
 # Output: R²=0.462, MAE=187, ρ=0.661
 
 # Step 3: Full results table (home + clinic, ~30s)
