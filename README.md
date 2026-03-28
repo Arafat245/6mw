@@ -313,8 +313,21 @@ Best Home Result (clinic-free):
 
 **To reproduce:**
 ```bash
-python home/extract_clinicfree_features.py  # extracts 153 features → feats/
-python analysis/results_table_final.py       # results table (home + clinic)
+# Step 1: Extract 153 clinic-free features (one-time, ~15 min)
+python home/extract_clinicfree_features.py
+# Input:  csv_home_daytime/*.csv (home accelerometer, 101 subjects)
+# Output: feats/home_clinicfree_features.csv (153 features × 101 subjects)
+#         feats/home_clinicfree_top20.npz (pre-selected top-20)
+
+# Step 2: Reproduce R²=0.462 with Spearman inside LOO (no leakage, ~1 min)
+python analysis/reproduce_home_result.py
+# Input:  feats/home_clinicfree_features.csv
+#         SwayDemographics.xlsx (Demo: cohort, Age, Sex, BMI)
+# Output: R²=0.462, MAE=187, ρ=0.661
+
+# Step 3: Full results table (home + clinic, ~30s)
+python analysis/results_table_final.py
+# Output: feats/results_table_final.csv
 ```
 
 ---
