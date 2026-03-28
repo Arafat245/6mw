@@ -15,10 +15,11 @@ Predicting 6MWD from hip-worn accelerometer data collected during clinic 6-minut
 | Demo | H:5, C:4 | 203 | 0.588 | 0.355 | 218 | 0.524 | 0.305 |
 | PerBout-Top20+Demo | H:25, C:4 | 191 | 0.633 | 0.441 | 218 | 0.524 | 0.305 |
 | Forward-Selected+Demo | 30 | 166 | 0.717 | 0.555 | — | — | — |
-| **FwdSel+FindWalking+Demo** | **30** | **156** | **0.787** | **0.628** | — | — | — |
+| FwdSel+FindWalking+Demo | 30 | 156 | 0.787 | 0.628 | — | — | — |
+| **FwdSel+CWT-PerBout+Demo** | **30** | **132** | **0.823** | **0.736** | — | — | — |
 | **Gait+CWT+WalkSway+Demo** | **H:56, C:55** | 216 | 0.521 | 0.232 | **102** | **0.880** | **0.806** |
 
-- **Home (best)**: Forward-selected 30 features from 153 per-bout + 25 find_walking (CWT) + Demo(5). Ridge alpha=5, LOO CV.
+- **Home (best)**: Forward-selected 30 features from 153 orig per-bout + 124 CWT per-bout + 25 fw summary + Demo(5) = 307 candidates. Ridge alpha=5, LOO CV.
 - **Home (previous)**: PerBout-Top20 + Demo(5), Ridge alpha=20.
 - **Clinic**: Full 6MWT. Demo(4) without BMI.
 - **n=101**, LOO CV, Ridge regression with alpha search.
@@ -435,4 +436,5 @@ Old experimental scripts (exp1-exp11, run_all_models, predict_6mwd_*, etc.) are 
 | +Demo(5)+α | Added Height+BMI, tuned α | 0.806 | 0.488 |
 | Clinic-free | Per-bout aggregation, no clinic data dependency | 0.806 | 0.441 |
 | Forward selection | 30 features from 153 per-bout+activity, forward-selected | 0.806 | 0.555 |
-| **+find_walking** | 30 features from 153 per-bout + 25 CWT find_walking + demo, forward-selected | 0.806 | **0.628** |
+| +find_walking | 30 features from 153 per-bout + 25 CWT find_walking + demo, forward-selected | 0.806 | 0.628 |
+| **+CWT per-bout** | 30 features from 307 (orig+CWT per-bout+fw+demo), forward-selected | 0.806 | **0.736** |
