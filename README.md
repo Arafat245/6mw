@@ -37,6 +37,27 @@ Predicting 6MWD from hip-worn accelerometer data collected during clinic 6-minut
 | `archive/` | Old experimental scripts (not in final pipeline) | ~20 scripts |
 | `temporary_experiments/` | Scratch space for new experiments before finalizing | — |
 
+## Data Requirements
+
+Three source files are needed to reproduce everything from scratch:
+
+| # | File | Description | Format |
+|---|---|---|---|
+| 1 | `Accel files/*/*.gt3x` | Raw accelerometer recordings (hip-worn, 30 Hz, ±6g). One GT3X file per subject inside subject folders (e.g., `C01_OPT/`, `M05_OPT-2016/`). Contains both clinic 6MWT (~6 min) and home free-living (~7–10 days) data. | ActiGraph GT3X binary |
+| 2 | `feats/target_6mwd.csv` | Subject list with 6MWD ground truth. 103 rows with columns: `cohort` (C=Healthy, M=POMS), `subj_id`, `year`, `sixmwd` (6-minute walk distance in feet). Exclude M22 and M44 → 101 subjects. | CSV |
+| 3 | `SwayDemographics.xlsx` | Demographics and clinical scores. Columns: `ID` (e.g., C01, M05), `Age`, `Sex` (1=M, 2=F), `Height` (cm), `Weight` (kg), `BMI`, plus clinical scores (BDI, MFIS, EDSS — not used as predictors). | Excel |
+
+**Pre-computed intermediate files** (generated from the above, already cached):
+
+| File | Created by | Description |
+|---|---|---|
+| `csv_raw2/*.csv` | GT3X extraction | Clinic 6MWT raw data (Timestamp, X, Y, Z). 122 files. |
+| `csv_preprocessed2/*.csv` | `clinic/reproduce_c2.py` | Clinic preprocessed (AP, ML, VT, _bp, ENMO). 120 files. |
+| `csv_home_daytime/*.csv` | `home/preprocess_raw.py` | Home daytime accelerometer (X, Y, Z, fs=30). 102 files, 35 GB total. |
+| `feats/home_clinicfree_features.csv` | `home/extract_clinicfree_features.py` | 153 clinic-free features × 101 subjects. |
+
+If intermediate files are missing, run the corresponding script to regenerate them.
+
 ## Prerequisites
 
 ```bash
