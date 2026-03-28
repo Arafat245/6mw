@@ -2,7 +2,7 @@
 
 Predicting 6MWD from hip-worn accelerometer data collected during clinic 6-minute walk tests and home free-living monitoring in POMS.
 
-**Subjects:** n=101 (POMS=38, Healthy=63), consistent across all analyses.
+**Subjects:** n=101 (POMS=38, Healthy=63), consistent across all analyses. Two subjects excluded: M22 (data quality) and M44 (too-short clinic recording, 601 samples). Subject list in `feats/target_6mwd.csv` (103 rows including M22/M44 — filter with `cohort=='M' & subj_id in [22,44]`).
 
 ## Best Results (Current)
 
@@ -388,7 +388,12 @@ Height is NOT used (redundant with BMI). Missing values imputed with column medi
 ### Step H7: Feature Selection + Prediction (no data leakage)
 
 **Script:** `analysis/reproduce_home_result.py`
-**Input:** `feats/home_clinicfree_features.csv` (153 features), `SwayDemographics.xlsx`, `feats/target_6mwd.csv`
+**Input:**
+- `feats/home_clinicfree_features.csv` — 153 accelerometry features (101 rows, M22/M44 already excluded)
+- `feats/target_6mwd.csv` — subject list with 6MWD targets (103 rows; script excludes M22 and M44 → 101 subjects)
+- `SwayDemographics.xlsx` — demographics (ID, Age, Sex, Height, Weight, BMI)
+
+**Subject filtering:** Load `target_6mwd.csv` (103 rows) → exclude rows where `cohort=='M'` and `subj_id` in `[22, 44]` → 101 subjects. Then match to `csv_preprocessed2/` filenames to confirm clinic data exists (all 101 match).
 
 **Leave-One-Subject-Out Cross-Validation with nested feature selection:**
 
