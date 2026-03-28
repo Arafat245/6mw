@@ -35,6 +35,7 @@ def load_gt3x(path):
 
 
 def extract_daytime(timestamps, xyz, day_start=7, day_end=22):
+    """Filter to daytime + worn-time. Returns (timestamps, xyz) tuple."""
     hours = (timestamps % 86400) / 3600
     daytime = (hours >= day_start) & (hours < day_end)
     vm = np.sqrt(xyz[:, 0]**2 + xyz[:, 1]**2 + xyz[:, 2]**2)
@@ -45,7 +46,8 @@ def extract_daytime(timestamps, xyz, day_start=7, day_end=22):
         worn = rstd > 0.01
     else:
         worn = np.ones(len(vm), dtype=bool)
-    return xyz[daytime & worn]
+    mask = daytime & worn
+    return timestamps[mask], xyz[mask]
 
 
 def detect_walking_bouts(xyz, fs=FS, win_sec=10, step_sec=2, min_bout_sec=20):
@@ -106,29 +108,73 @@ def preprocess_bout(seg, fs=FS):
     return np.column_stack([ap, ml, vt])
 
 
-def build_subject_list():
-    home = pd.read_csv(BASE / "sway_features_home.csv")
-    home.rename(columns={"year_x": "year"}, inplace=True)
+def _find_gt3x(cohort, subj_id):
+    """Find GT3X file for a subject in Accel files/."""
     accel_dir = BASE / "Accel files"
-    fmap = {}
-    for folder in accel_dir.iterdir():
-        if not folder.is_dir():
+    if not accel_dir.exists():
+        return None
+    for d in accel_dir.iterdir():
+        if not d.is_dir():
             continue
-        m = re.match(r"([CM])(\d+)", folder.name)
-        if m:
-            fmap[(m.group(1), int(m.group(2)))] = folder
+        m = re.match(r"([CM])(\d+)", d.name)
+        if m and m.group(1) == cohort and int(m.group(2)) == subj_id:
+            gt3x = list(d.glob("*.gt3x"))
+            if gt3x:
+                return gt3x[0]
+    return None
+
+
+def build_subject_list():
+    """Build subject list from target_6mwd.csv, excluding M22/M44."""
+    ids = pd.read_csv(BASE / "feats" / "target_6mwd.csv")
+    excl = (ids["cohort"] == "M") & (ids["subj_id"].isin([22, 44]))
+    ids101 = ids[~excl].reset_index(drop=True)
 
     subjects = []
-    for _, row in home.iterrows():
-        key = (row["cohort"], int(row["subj_id"]))
-        folder = fmap.get(key)
-        gt3x = list(folder.glob("*.gt3x")) if folder else []
+    for _, row in ids101.iterrows():
+        gt3x_path = _find_gt3x(row["cohort"], int(row["subj_id"]))
         subjects.append({
             "cohort": row["cohort"], "subj_id": int(row["subj_id"]),
             "year": int(row["year"]), "sixmwd": int(row["sixmwd"]),
-            "gt3x_path": str(gt3x[0]) if gt3x else None,
+            "gt3x_path": str(gt3x_path) if gt3x_path else None,
         })
     return pd.DataFrame(subjects)
+
+
+def save_daytime_with_timestamps():
+    """Save csv_home_daytime/ with Timestamp, X, Y, Z columns from GT3X."""
+    HOME_DIR = BASE / "csv_home_daytime"
+    HOME_DIR.mkdir(exist_ok=True)
+
+    subjects = build_subject_list()
+    n = len(subjects)
+    print(f"Saving daytime CSVs with timestamps for {n} subjects...")
+
+    for i, (_, row) in enumerate(subjects.iterrows()):
+        c, s, yr, d = row["cohort"], row["subj_id"], row["year"], row["sixmwd"]
+        fname = f"{c}{s:02d}_{yr}_{d}.csv"
+        out_path = HOME_DIR / fname
+
+        if row["gt3x_path"] is None:
+            print(f"  [{i+1}/{n}] {fname}: NO GT3X FILE", flush=True)
+            continue
+
+        timestamps, xyz = load_gt3x(row["gt3x_path"])
+        ts_filt, xyz_filt = extract_daytime(timestamps, xyz)
+
+        if len(xyz_filt) < int(60 * FS):
+            ts_filt, xyz_filt = timestamps, xyz
+
+        pd.DataFrame({
+            "Timestamp": ts_filt,
+            "X": xyz_filt[:, 0],
+            "Y": xyz_filt[:, 1],
+            "Z": xyz_filt[:, 2],
+        }).to_csv(out_path, index=False)
+
+        print(f"  [{i+1}/{n}] {fname}: {len(xyz_filt)} samples", flush=True)
+
+    print("Done.")
 
 
 def main():
@@ -152,13 +198,17 @@ def main():
                 print(f"    {i+1}/{n} (cached)", flush=True)
             continue
 
+        if row["gt3x_path"] is None:
+            continue
+
         # Load GT3X
         timestamps, xyz = load_gt3x(row["gt3x_path"])
 
         # Daytime extraction
-        daytime = extract_daytime(timestamps, xyz)
+        ts_day, daytime = extract_daytime(timestamps, xyz)
         if len(daytime) < int(60 * FS):
             daytime = xyz
+
         pd.DataFrame(daytime, columns=["X", "Y", "Z"]).to_csv(daytime_path, index=False)
 
         # Walking detection

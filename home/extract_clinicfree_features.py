@@ -341,7 +341,10 @@ def extract_all_features(ids_df, save_bouts=True):
             results.append(row)
             continue
 
-        xyz = pd.read_csv(fp, usecols=['X', 'Y', 'Z']).values.astype(np.float64)
+        home_df = pd.read_csv(fp)
+        has_ts = 'Timestamp' in home_df.columns
+        xyz = home_df[['X', 'Y', 'Z']].values.astype(np.float64)
+        ts = home_df['Timestamp'].values if has_ts else None
 
         # Per-bout gait features
         bouts = detect_walking_bouts(xyz, FS, min_bout_sec=10, merge_gap_sec=5)
@@ -353,11 +356,13 @@ def extract_all_features(ids_df, save_bouts=True):
             subj_bout_dir.mkdir(parents=True, exist_ok=True)
             for bout_idx, (s, e) in enumerate(bouts):
                 dur_sec = (e - s) / FS
-                bout_df = pd.DataFrame({
+                bout_data = {
+                    'Timestamp': ts[s:e] if ts is not None else np.arange(e - s) / FS,
                     'X': xyz[s:e, 0],
                     'Y': xyz[s:e, 1],
                     'Z': xyz[s:e, 2],
-                })
+                }
+                bout_df = pd.DataFrame(bout_data)
                 bout_df.to_csv(subj_bout_dir / f"bout_{bout_idx+1:04d}_{dur_sec:.0f}s.csv", index=False)
 
         bout_feats = []
