@@ -13,13 +13,12 @@ Predicting 6MWD from hip-worn accelerometer data collected during clinic 6-minut
 | WalkSway | H:12, C:12 | 244 | -0.038 | -0.030 | 178 | 0.715 | 0.403 |
 | PerBout-Top20 | 20 | 220 | 0.423 | 0.162 | — | — | — |
 | Demo | H:4, C:4 | 203 | 0.588 | 0.355 | 218 | 0.524 | 0.305 |
-| **PerBout-Top20+Demo (best home)** | **H:24, C:4** | **189** | **0.638** | **0.447** | 218 | 0.524 | 0.305 |
+| **PerBout-Top20+Demo (best home)** | **H:24, C:4** | **187** | **0.661** | **0.462** | 218 | 0.524 | 0.305 |
 | **Gait+CWT+WalkSway+Demo** | **H:56, C:55** | 216 | 0.521 | 0.232 | **102** | **0.880** | **0.806** |
 
-- **Home best**: PerBout-Top20 + Demo(4) = 24 features. Fully **clinic-free**, no feature selection leakage.
-- **Clinic**: Full 6MWT. Demo(4) without BMI.
-- **n=101**, LOO CV, Ridge α=10.
-- Home is fully **clinic-free** — no clinic data used anywhere.
+- **Home best**: Spearman Top-20 selected inside LOO (no data leakage) + Demo(4) = 24 features. Ridge α=20.
+- **Clinic**: Full 6MWT. Demo(4) without BMI. Ridge α=10.
+- **n=101**, LOO CV. Home is fully **clinic-free** — no clinic data used anywhere.
 
 ## Folder Summary
 
@@ -258,17 +257,53 @@ python clinic/extract_walking_sway.py  # also: python home/extract_walking_sway.
 
 ### Step H3: Home Prediction (Clinic-Free)
 
-**Best Home (R²=0.447) — fully clinic-free, no feature selection leakage:**
+**Best Home (R²=0.462) — fully clinic-free, no data leakage:**
+
+**Step 1: Walking Bout Detection (ENMO + Harmonic Ratio)**
+1. Load home accelerometer data from `csv_home_daytime/*.csv` (X, Y, Z at 30 Hz)
+2. Compute VM = sqrt(X²+Y²+Z²), ENMO = max(VM-1.0, 0)
+3. Average ENMO per 1-second bin; mark seconds with ENMO ≥ 0.015g as "active"
+4. Group consecutive active seconds into bouts (min 10 seconds)
+5. Bandpass filter VM at 0.5–3.0 Hz (4th order Butterworth)
+6. In 10-second windows: FFT → dominant frequency (0.8–3.5 Hz) → harmonic ratio (even/odd harmonics)
+7. Keep windows with HR ≥ 0.2 (confirms periodic walking)
+8. Merge adjacent bouts within 5-second gap
+
+**Step 2: Per-Bout Feature Extraction (20 features per bout)**
+For each bout (min 10s):
+1. Preprocess: gravity removal (0.25 Hz lowpass), Rodrigues rotation, PCA yaw → AP, ML, VT
+2. Bandpass 0.25–2.5 Hz → AP_bp, ML_bp, VT_bp
+3. Reject bout if cadence < 1.0 Hz (not true walking)
+4. Extract 20 features: cadence_hz, cadence_power, acf_step_reg, hr_ap, hr_vt, hr_ml, stride_time_mean/std/cv, ml_rms, vt_rms, ap_rms, enmo_mean, enmo_p95, vm_std, vt_range, ml_range, jerk_mean, signal_energy, duration_sec
+
+**Step 3: Aggregation (6 stats per feature)**
+For each of 20 features, compute across all valid bouts: median, IQR, p10, p90, max, CV
+Plus 4 bout meta: n_valid_bouts, total_walk_sec, mean_bout_dur, bout_dur_cv
+→ **153 accelerometry features** (124 gait + 29 activity)
+
+**Step 4: Activity Features (whole recording, 29 features)**
+From entire daytime recording (not bout-specific): ENMO distribution, intensity zones, bout patterns, fragmentation, diurnal patterns.
+
+**Step 5: Prediction (Spearman inside LOO — no leakage)**
+```
+For each of 101 LOO folds:
+    Hold out subject i
+    On 100 TRAINING subjects only:
+        Compute |Spearman ρ| of each 153 features with 6MWD
+        Select top 20 by |ρ|
+    Combine 20 selected + Demo(4) = 24 features
+    StandardScaler: fit on training, transform both
+    Ridge(α=20): fit on training, predict held-out subject
+Collect 101 predictions → R²=0.462, MAE=187 ft, ρ=0.661
+```
+
 - Demo(4): cohort_POMS, Age, Sex, BMI
-- PerBout-Top20: top 20 per-bout aggregated features by Spearman correlation with 6MWD
-- Walking detection: ENMO threshold + harmonic ratio (no clinic reference)
-- Per-bout feature extraction with cadence ≥ 1.0 Hz filter, aggregated with robust statistics (median, IQR, p10, p90, max, CV)
-- Model: Ridge α=10, LOO CV
 - **No clinic data used anywhere**
+- **No feature selection leakage** — Spearman selection inside each LOO fold
 
 ```
 Best Home Result (clinic-free):
-  All:     R²=0.447, MAE=189 ft, ρ=0.638
+  All:     R²=0.462, MAE=187 ft, ρ=0.661
 ```
 
 **Top predictive features (all clinic-free):**
@@ -278,8 +313,8 @@ Best Home Result (clinic-free):
 
 **To reproduce:**
 ```bash
-python home/extract_clinicfree_features.py  # extracts PerBout-Top20 features → feats/
-python analysis/results_table_final.py       # full 7-row results table (home + clinic)
+python home/extract_clinicfree_features.py  # extracts 153 features → feats/
+python analysis/results_table_final.py       # results table (home + clinic)
 ```
 
 ---
@@ -362,7 +397,7 @@ Continuous wavelet transform: mean_energy, high_freq_energy, dominant_freq, esti
 ## Important Notes
 
 ### Clinic-Free Home Pipeline
-The home model uses **no clinic data at all**. Walking bouts are detected using ENMO thresholding + harmonic ratio refinement (no cosine similarity to clinic signature). Features are extracted per-bout and aggregated with robust statistics (median, IQR, percentiles, CV). The top 20 features by Spearman correlation with 6MWD are selected. See `home/extract_clinicfree_features.py`.
+The home model uses **no clinic data at all**. Walking bouts are detected using ENMO thresholding + harmonic ratio refinement (no cosine similarity to clinic signature). Features are extracted per-bout and aggregated with robust statistics (median, IQR, percentiles, CV). Feature selection (Spearman Top-20) is done **inside each LOO fold** to avoid data leakage. See `home/extract_clinicfree_features.py`.
 
 ### Legacy Home Pipelines (archived)
 1. **`home/home_hybrid_models_v2.py`**: Clinic-informed bout selection via cosine similarity — no longer used for best results
@@ -388,4 +423,5 @@ Old experimental scripts (exp1-exp11, run_all_models, predict_6mwd_*, etc.) are 
 | Initial | Gait13+CWT+Demo | 0.792 | 0.428 |
 | +WalkSway | Gait11+CWT+WalkSway+Demo | 0.806 | 0.428 |
 | +Demo(5)+α | Added Height+BMI, tuned α | 0.806 | 0.488 |
-| **Clinic-free** | PerBout-Top20 + Demo(4), no leakage | 0.806 | **0.447** |
+| Clinic-free (fixed Top-20) | PerBout-Top20 + Demo(4), fixed selection | 0.806 | 0.447 |
+| **Clinic-free (nested LOO)** | Spearman inside LOO + Demo(4), α=20, no leakage | 0.806 | **0.462** |

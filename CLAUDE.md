@@ -37,7 +37,7 @@ Predicting 6-Minute Walk Distance (6MWD) from hip-worn accelerometer data in Ped
 | Setting | Features | R² | MAE (ft) | ρ |
 |---|---|---|---|---|
 | Clinic | Gait+CWT+WalkSway+Demo (55f) | 0.806 | 102 | 0.880 |
-| Home (clinic-free) | PerBout-Top20+Demo(4) (24f) | 0.447 | 189 | 0.638 |
+| Home (clinic-free) | PerBout-Top20+Demo(4) (24f, Spearman inside LOO) | 0.462 | 187 | 0.661 |
 
 ## Key Scripts
 
