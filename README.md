@@ -24,7 +24,28 @@ conda activate pygt3x-env
 pip install numpy pandas scipy scikit-learn openpyxl pygt3x PyWavelets
 ```
 
-## Reproduction Pipeline
+## Quick Start
+
+```bash
+conda activate pygt3x-env
+
+# Step 0: GT3X -> daytime NPZ (one-time, ~2.5 hours)
+# Reads raw GT3X files, extracts daytime (7AM-10PM), filters worn-time, saves compressed NPZ
+# Input:  Accel files/*/*.gt3x + 6mw_segmented_walk_data_dict.pkl
+# Output: csv_home_daytime_npz/*.npz (101 files) + _subjects.csv
+python temporary_experiments/step0_gt3x_to_npz.py
+
+# Step 1: Extract features + evaluate -> R²=0.451 (~8 minutes)
+# Detects walking bouts (ENMO+HR), extracts 153 per-bout gait + activity features,
+# loads Demo(4) from demographics, runs Spearman inside LOO with Ridge (no leakage)
+# Input:  csv_home_daytime_npz/*.npz + Accel files/PedMSWalkStudy_Demographic.xlsx
+# Output: feats/home_clinicfree_features.csv + feats/target_6mwd.csv
+python temporary_experiments/step1_extract_and_predict.py
+```
+
+---
+
+## Detailed Reproduction Pipeline
 
 ### Step 0: GT3X to Daytime NPZ (~2.5 hours, one-time)
 

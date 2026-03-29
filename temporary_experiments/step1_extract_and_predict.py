@@ -343,66 +343,59 @@ if __name__ == '__main__':
 
     feat_df = pd.DataFrame(all_rows)
 
-    # Select Top-20
-    X_top20 = np.full((n, len(TOP20_FEATURES)), np.nan)
-    for j, feat in enumerate(TOP20_FEATURES):
-        if feat in feat_df.columns:
-            X_top20[:, j] = feat_df[feat].values
-    X_top20 = impute(X_top20)
+    # All 153 accel features
+    accel_cols = [c for c in feat_df.columns]
+    X_accel = impute(feat_df.values.astype(float))
+    n_accel = X_accel.shape[1]
 
-    # Demographics
-    print("\nLoading demographics...")
+    # Demographics: Demo(4) = cohort_POMS, Age, Sex, BMI (Height dropped)
+    print("\nLoading demographics (Demo(4): cohort_POMS, Age, Sex, BMI)...")
     demo = pd.read_excel(BASE / 'Accel files' / 'PedMSWalkStudy_Demographic.xlsx')
     demo['cohort'] = demo['ID'].str.extract(r'^([A-Z])')[0]
     demo['subj_id'] = demo['ID'].str.extract(r'(\d+)')[0].astype(int)
     p = subj_df.merge(demo, on=['cohort', 'subj_id'], how='left')
     p['cohort_POMS'] = (p['cohort'] == 'M').astype(int)
-    for c in ['Age', 'Sex', 'Height', 'BMI']:
+    for c in ['Age', 'Sex', 'BMI']:
         p[c] = pd.to_numeric(p[c], errors='coerce')
-    X_demo = impute(p[['cohort_POMS', 'Age', 'Sex', 'Height', 'BMI']].values.astype(float))
+    demo_cols = ['cohort_POMS', 'Age', 'Sex', 'BMI']
+    X_demo = impute(p[demo_cols].values.astype(float))
+    n_demo = len(demo_cols)
 
-    # Combine + LOO Ridge CV
-    X = np.column_stack([X_top20, X_demo])
-    print(f"\nLOO Ridge CV: X={X.shape}, n={n}")
-    print(f"{'alpha':>7s}  {'R2':>8s}  {'MAE':>8s}  {'r':>8s}  {'rho':>8s}")
-    print("-" * 48)
-    for alpha in [5, 10, 20, 50, 100]:
-        preds = np.zeros(n)
-        for tr, te in LeaveOneOut().split(X):
-            sc = StandardScaler(); m = Ridge(alpha=alpha)
-            m.fit(sc.fit_transform(X[tr]), y[tr])
-            preds[te] = m.predict(sc.transform(X[te]))
-        r2 = r2_score(y, preds)
-        mae = mean_absolute_error(y, preds)
-        r_val = pearsonr(y, preds)[0]
-        rho = spearmanr(y, preds)[0]
-        marker = "  <<<" if alpha == 20 else ""
-        print(f"  {alpha:>5d}  {r2:>8.4f}  {mae:>7.1f}  {r_val:>8.3f}  {rho:>7.3f}{marker}")
+    X_all = np.column_stack([X_accel, X_demo])
+    demo_idx = list(range(n_accel, n_accel + n_demo))
 
-    # Verify against cached npz
-    npz_ref = np.load(BASE / 'feats' / 'home_clinicfree_top20.npz')
-    y_ref = npz_ref['y']
-    if np.array_equal(y.astype(int), y_ref.astype(int)):
-        corr = np.corrcoef(X_top20.flatten(), npz_ref['X'].flatten())[0, 1]
-        print(f"\n  Subject order matches cached. Feature corr: r={corr:.4f}")
+    # ── Best evaluation: Spearman inside LOO + Demo(4), no leakage ──
+    K = 20
+    alpha = 20
+    print(f"\nSpearman inside LOO (no leakage): K={K} + Demo(4), Ridge a={alpha}")
+    preds = np.zeros(n)
+    for tr, te in LeaveOneOut().split(X_all):
+        corrs = [abs(spearmanr(X_all[tr, j], y[tr])[0]) if np.std(X_all[tr, j]) > 0 else 0
+                 for j in range(n_accel)]
+        top_k = sorted(range(n_accel), key=lambda j: corrs[j], reverse=True)[:K]
+        selected = top_k + demo_idx
+        sc = StandardScaler(); m = Ridge(alpha=alpha)
+        m.fit(sc.fit_transform(X_all[tr][:, selected]), y[tr])
+        preds[te] = m.predict(sc.transform(X_all[te][:, selected]))
+    r2 = r2_score(y, preds)
+    mae = mean_absolute_error(y, preds)
+    rho = spearmanr(y, preds)[0]
+    r_val = pearsonr(y, preds)[0]
+    print(f"  R2={r2:.4f}  MAE={mae:.0f}  r={r_val:.3f}  rho={rho:.3f}")
+    print(f"  n={n}, features={K}+{n_demo}={K+n_demo}")
 
-    # Save features, bouts, and Top-20 NPZ for later use
+    # ── Save ──
     FEATS_DIR = BASE / 'feats'
 
     feat_df.insert(0, 'key', subj_df['key'].values)
     feat_df.to_csv(FEATS_DIR / 'home_clinicfree_features.csv', index=False)
     print(f"\n  Saved feats/home_clinicfree_features.csv ({feat_df.shape})")
 
-    np.savez(FEATS_DIR / 'home_clinicfree_top20_reproduced.npz',
-             X=X_top20, feature_names=TOP20_FEATURES, y=y)
-    print(f"  Saved feats/home_clinicfree_top20_reproduced.npz")
-
     import pickle
     with open(FEATS_DIR / 'home_walking_bouts.pkl', 'wb') as f:
         pickle.dump({'bouts': all_bouts, 'bout_feats': all_bout_feats}, f)
     print(f"  Saved feats/home_walking_bouts.pkl ({len(all_bouts)} subjects)")
 
-    # Also save target_6mwd.csv for future use
     subj_df[['cohort', 'subj_id', 'year', 'sixmwd']].to_csv(
         FEATS_DIR / 'target_6mwd.csv', index=False)
     print(f"  Saved feats/target_6mwd.csv")
