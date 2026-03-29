@@ -9,6 +9,7 @@ Predicting 6-Minute Walk Distance (6MWD) from hip-worn accelerometer data in Ped
 ### Data & Analysis
 - **Always n=101.** M22 and M44 are excluded from all analyses.
 - **LOO CV only.** Leave-One-Subject-Out cross-validation. Never use L5SO or random splits.
+- **Report in meters.** Convert all 6MWD predictions and true values from feet to meters (×0.3048) before evaluating. MAE, RMSE, etc. should be in meters (m), not feet.
 - **Demographics = basic only.** Demo features: Age, Sex, Height, BMI, cohort_POMS. Never include clinical scores (BDI, MFIS, etc.) as predictors — they require clinic visits.
 - **No CCPT.** Do not use predicted 6MWD as input to predict 6MWD (circular).
 - **Home pipeline is fully clinic-free.** `home/step0→step3` pipeline. No clinic data used anywhere.
@@ -42,10 +43,10 @@ Predicting 6-Minute Walk Distance (6MWD) from hip-worn accelerometer data in Ped
 
 ## Current Best Results
 
-| Setting | Features | R² | MAE (ft) | ρ |
+| Setting | Features | R² | MAE (m) | ρ |
 |---|---|---|---|---|
-| Clinic | Gait+CWT+WalkSway+Demo (55f) | 0.806 | 102 | 0.880 |
-| Home (clinic-free) | PerBout-Top20+Demo(4) (24f, Spearman inside LOO) | 0.454 | 182 | 0.659 |
+| Clinic | Gait+CWT+WalkSway+Demo (55f) | 0.806 | 31.1 | 0.880 |
+| Home (clinic-free) | PerBout-Top20+Demo(4) (24f, Spearman inside LOO) | 0.454 | 55.5 | 0.659 |
 
 ## Home Pipeline (step0 → step3)
 
