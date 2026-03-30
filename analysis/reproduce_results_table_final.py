@@ -270,8 +270,8 @@ if __name__ == '__main__':
     print(f'  Demo:              C R²={cr2:.3f}  H R²={hr2:.3f}')
 
     # ── Row 5: PerBout-Top20 ──
-    # Clinic: Spearman Top-20 inside LOO, α=20
-    cr2, cmae, crho = loo_spearman_append_demo(c_pb, None, y, K=20, alpha=20)
+    # Clinic: Spearman Top-20 inside LOO, α=5 (best for clinic)
+    cr2, cmae, crho = loo_spearman_append_demo(c_pb, None, y, K=20, alpha=5)
     # Home: Spearman Top-20 inside LOO, α=20
     hr2, hmae, hrho = loo_spearman_append_demo(h_pb, None, y, K=20, alpha=20)
     rows.append({'Feature Set': 'PerBout-Top20', '#f': 20,

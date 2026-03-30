@@ -12,7 +12,7 @@ Predicting 6MWD from hip-worn accelerometer data collected during clinic 6-minut
 | CWT | 28 | 0.357 | 60.2 | 0.601 | 0.150 | 68.0 | 0.461 |
 | WalkSway | 12 | 0.403 | 54.2 | 0.715 | 0.061 | 72.7 | 0.315 |
 | Demo | 4 | 0.362 | 60.8 | 0.595 | 0.362 | 60.8 | 0.595 |
-| PerBout-Top20 | 20 | 0.583 | 46.8 | 0.778 | 0.184 | 67.5 | 0.451 |
+| PerBout-Top20 | 20 | 0.604 | 46.0 | 0.778 | 0.184 | 67.5 | 0.451 |
 | PerBout-Top20+Demo | 24 | 0.675 | 40.3 | 0.841 | **0.454** | **55.5** | **0.659** |
 | **Gait+CWT+WS+Demo** | **55** | **0.806** | **31.2** | **0.880** | 0.281 | 63.7 | 0.543 |
 
@@ -22,7 +22,7 @@ Reproduce: `python analysis/reproduce_results_table_final.py` (~4 min)
 - **Demo-only row:** cohort_POMS, Age, Sex, BMI — same for clinic and home, Ridge α=20
 - **Demo in combos:** Clinic uses Height, Home uses BMI (different best Demo per setting)
 - **Clinic Gait/CWT/WS:** extracted from full 6MWT, Ridge with fixed α per set (Gait α=5, CWT α=20, WS α=5)
-- **Clinic PerBout:** 60s windows of 6MWT, Spearman Top-20 inside LOO, Ridge α=20
+- **Clinic PerBout:** 60s windows of 6MWT, Spearman Top-20 inside LOO, Ridge α=5
 - **Clinic Gait+CWT+WS+Demo:** all features, no selection, Ridge α=5, Demo=Height
 - **Home PerBout:** all walking bouts from full recording, Spearman Top-20 inside LOO, Ridge α=20
 - **Home Gait/CWT/WS:** VM-based (no gravity removal, no axis alignment), Top-10 clean bouts ≥60s (drift≤0.5g, orient≤10°), per-bout aggregation, Spearman Top-11 inside LOO
