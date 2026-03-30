@@ -4,7 +4,7 @@ Reproduce best home result: R²=0.462, MAE=187, ρ=0.661
 Spearman Top-20 selected inside LOO (no data leakage) + Demo(4), Ridge α=20.
 
 Input:
-  feats/home_clinicfree_features.csv  — 153 per-bout + activity features
+  feats/home_perbout_features.csv  — 153 per-bout + activity features
   feats/target_6mwd.csv              — subject list with 6MWD targets
   SwayDemographics.xlsx              — demographics (Age, Sex, BMI)
 
@@ -49,7 +49,7 @@ if __name__ == '__main__':
     n = len(y)
 
     # Load 153 PerBout + Activity features
-    cf_csv = pd.read_csv(BASE / 'feats' / 'home_clinicfree_features.csv')
+    cf_csv = pd.read_csv(BASE / 'feats' / 'home_perbout_features.csv')
     pb_idx = []
     for _, r in ids_v.iterrows():
         match = ids101[(ids101['cohort'] == r['cohort']) & (ids101['subj_id'] == r['subj_id']) & (ids101['sixmwd'] == r['sixmwd'])]

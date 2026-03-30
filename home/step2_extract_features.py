@@ -4,7 +4,7 @@ Step 2: Extract per-bout gait features + whole-recording activity features.
 Uses bout indices from step1 and raw data from NPZ files.
 
 Input:  home_full_recording_npz/*.npz + feats/home_walking_bouts.pkl
-Output: feats/home_clinicfree_features.csv (153 features x 101 subjects)
+Output: feats/home_perbout_features.csv (153 features x 101 subjects)
 
 Run:  python home/step2_extract_features.py
 """
@@ -249,8 +249,8 @@ if __name__ == '__main__':
 
     feat_df = pd.DataFrame(all_rows)
     feat_df.insert(0, 'key', subj_df['key'].values)
-    feat_df.to_csv(FEATS_DIR / 'home_clinicfree_features.csv', index=False)
-    print(f"\nSaved feats/home_clinicfree_features.csv ({feat_df.shape})")
+    feat_df.to_csv(FEATS_DIR / 'home_perbout_features.csv', index=False)
+    print(f"\nSaved feats/home_perbout_features.csv ({feat_df.shape})")
 
     # Update pkl with bout features
     with open(FEATS_DIR / 'home_walking_bouts.pkl', 'rb') as f:

@@ -2,7 +2,7 @@
 """
 Step 3: LOO CV prediction with Spearman Top-20 + Demo(4), Ridge alpha=20.
 
-Input:  feats/home_clinicfree_features.csv + SwayDemographics.xlsx
+Input:  feats/home_perbout_features.csv + SwayDemographics.xlsx
         home_full_recording_npz/_subjects.csv
 Output: Prints R², MAE, ρ
 
@@ -39,7 +39,7 @@ if __name__ == '__main__':
     n = len(subj_df)
 
     # Load 153 accel features
-    feat_df = pd.read_csv(FEATS_DIR / 'home_clinicfree_features.csv')
+    feat_df = pd.read_csv(FEATS_DIR / 'home_perbout_features.csv')
     accel_cols = [c for c in feat_df.columns if c != 'key']
     X_accel = impute(feat_df[accel_cols].values.astype(float))
     n_accel = X_accel.shape[1]

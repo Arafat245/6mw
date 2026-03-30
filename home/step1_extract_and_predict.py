@@ -1,66 +1,41 @@
 #!/usr/bin/env python3
 """
-Clinic-free home feature extraction.
-No clinic data used anywhere — no PLS, no cosine similarity to clinic signature.
+Step 1: Load daytime NPZ -> clinic-free features -> Top-20 + Demo(5) -> Ridge LOO CV.
+Run AFTER step0_gt3x_to_npz.py finishes.
 
-Walking detection: ENMO threshold → HR refinement → merge adjacent bouts (gap <5s)
-  - Min bout: 10s, cadence filter: reject <1.0 Hz
-Feature extraction: per-bout gait features + whole-recording activity features
-  - Aggregate per-bout features with robust stats (median, IQR, p10, p90, max, CV)
-Output: feats/home_clinicfree_features.npz
-
-Best result: Top-20 correlated features + Demo(5), Ridge α=20 → R²=0.441, MAE=191ft
+Requires: pygt3x-env (or any env with numpy, pandas, scipy, sklearn, openpyxl)
+Run:  python temporary_experiments/step1_extract_and_predict.py
 """
+import os, re, math, time, warnings, pickle
 import numpy as np
 import pandas as pd
-import math
-import warnings
 from pathlib import Path
 from scipy.signal import butter, filtfilt, welch, find_peaks
-from scipy.stats import skew, kurtosis
+from scipy.stats import spearmanr, pearsonr, skew, kurtosis
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import LeaveOneOut
+from sklearn.metrics import r2_score, mean_absolute_error
+from sklearn.linear_model import Ridge
 
 warnings.filterwarnings('ignore')
-
 BASE = Path(__file__).parent.parent
-HOME_DIR = BASE / 'csv_home_daytime'
+NPZ_DIR = BASE / 'home_full_recording_npz'
 FS = 30
 
-# Top-20 features by Spearman |ρ| with 6MWD (all clinic-free)
 TOP20_FEATURES = [
-    'g_duration_sec_max',       # ρ=+0.415  longest walking bout
-    'g_bout_dur_cv',            # ρ=+0.406  bout duration variability
-    'g_duration_sec_cv',        # ρ=+0.406  (same metric, different path)
-    'act_enmo_p95',             # ρ=+0.396  peak daily activity intensity
-    'act_pct_vigorous',         # ρ=+0.390  % time in vigorous activity
-    'g_acf_step_reg_max',       # ρ=+0.378  best step regularity across bouts
-    'g_enmo_mean_p10',          # ρ=+0.356  10th %ile ENMO across bouts
-    'g_ml_range_med',           # ρ=+0.355  median ML sway range
-    'g_ml_rms_cv',              # ρ=-0.354  CV of ML RMS across bouts
-    'g_ap_rms_cv',              # ρ=-0.354  CV of AP RMS across bouts
-    'g_ap_rms_med',             # ρ=+0.351  median AP amplitude
-    'g_acf_step_reg_p90',       # ρ=+0.347  90th %ile step regularity
-    'g_jerk_mean_med',          # ρ=+0.343  median jerk
-    'g_mean_bout_dur',          # ρ=+0.338  mean bout duration
-    'g_signal_energy_med',      # ρ=+0.333  median signal energy
-    'g_ml_rms_med',             # ρ=+0.328  median ML RMS
-    'g_vm_std_med',             # ρ=+0.328  median VM variability
-    'g_enmo_mean_med',          # ρ=+0.327  median ENMO across bouts
-    'g_enmo_p95_med',           # ρ=+0.324  median of per-bout 95th %ile ENMO
-    'g_acf_step_reg_med',       # ρ=+0.324  median step regularity
+    'g_duration_sec_max', 'g_bout_dur_cv', 'g_duration_sec_cv',
+    'act_enmo_p95', 'act_pct_vigorous',
+    'g_acf_step_reg_max', 'g_enmo_mean_p10', 'g_ml_range_med',
+    'g_ml_rms_cv', 'g_ap_rms_cv', 'g_ap_rms_med',
+    'g_acf_step_reg_p90', 'g_jerk_mean_med', 'g_mean_bout_dur',
+    'g_signal_energy_med', 'g_ml_rms_med', 'g_vm_std_med',
+    'g_enmo_mean_med', 'g_enmo_p95_med', 'g_acf_step_reg_med',
 ]
 
 
-# ══════════════════════════════════════════════════════════════════
-# WALKING DETECTION (clinic-free)
-# ══════════════════════════════════════════════════════════════════
+# ── Walking detection ──
 
 def detect_walking_bouts(xyz, fs, min_bout_sec=10, merge_gap_sec=5):
-    """
-    Detect walking bouts without clinic data.
-    Stage 1: ENMO ≥ 0.015 per second, min 10s bouts
-    Stage 2: Harmonic ratio ≥ 0.2 in 10s windows (confirms periodic walking)
-    Stage 3: Merge adjacent bouts within 5s gap
-    """
     vm = np.sqrt(xyz[:, 0]**2 + xyz[:, 1]**2 + xyz[:, 2]**2)
     enmo = np.maximum(vm - 1.0, 0.0)
     sec = int(fs); n_secs = len(enmo) // sec
@@ -68,8 +43,6 @@ def detect_walking_bouts(xyz, fs, min_bout_sec=10, merge_gap_sec=5):
         return []
     enmo_sec = enmo[:n_secs * sec].reshape(n_secs, sec).mean(axis=1)
     active = enmo_sec >= 0.015
-
-    # Stage 1: Find active bouts
     raw_bouts = []
     in_b, bs = False, 0
     for s in range(n_secs):
@@ -81,14 +54,11 @@ def detect_walking_bouts(xyz, fs, min_bout_sec=10, merge_gap_sec=5):
         raw_bouts.append((bs * sec, n_secs * sec))
     if not raw_bouts:
         return []
-
-    # Stage 2: HR refinement
     b_filt, a_filt = butter(4, [0.5, 3.0], btype='bandpass', fs=fs)
     vm_bp = filtfilt(b_filt, a_filt, vm - vm.mean())
     win = int(10 * fs); step = int(10 * fs)
     fft_freqs = np.fft.rfftfreq(win, d=1.0 / fs)
     band = (fft_freqs >= 0.8) & (fft_freqs <= 3.5)
-
     refined = []
     for bout_s, bout_e in raw_bouts:
         walking_wins = []
@@ -119,8 +89,6 @@ def detect_walking_bouts(xyz, fs, min_bout_sec=10, merge_gap_sec=5):
                 refined.append((bout_s, bout_e))
     if not refined:
         return []
-
-    # Stage 3: Merge adjacent bouts (gap < merge_gap_sec)
     merged = [refined[0]]
     for s, e in refined[1:]:
         prev_s, prev_e = merged[-1]
@@ -131,9 +99,7 @@ def detect_walking_bouts(xyz, fs, min_bout_sec=10, merge_gap_sec=5):
     return merged
 
 
-# ══════════════════════════════════════════════════════════════════
-# PREPROCESSING
-# ══════════════════════════════════════════════════════════════════
+# ── Preprocessing ──
 
 def _rodrigues(axis, theta):
     ax = axis / (np.linalg.norm(axis) + 1e-12)
@@ -167,42 +133,32 @@ def preprocess_segment(xyz, fs=30.0):
     return apmlvt, apmlvt_bp, enmo, np.linalg.norm(apmlvt, axis=1)
 
 
-# ══════════════════════════════════════════════════════════════════
-# PER-BOUT GAIT FEATURES
-# ══════════════════════════════════════════════════════════════════
+# ── Per-bout features ──
 
 def extract_bout_features(xyz, fs=30.0):
-    """Extract gait features from a single walking bout. Returns dict or None."""
     if len(xyz) < int(10 * fs):
         return None
     try:
         apmlvt, apmlvt_bp, enmo, vm_dyn = preprocess_segment(xyz, fs)
     except:
         return None
-
     ap, ml, vt = apmlvt[:, 0], apmlvt[:, 1], apmlvt[:, 2]
     ap_bp, ml_bp, vt_bp = apmlvt_bp[:, 0], apmlvt_bp[:, 1], apmlvt_bp[:, 2]
-
-    # Cadence
     nperseg = min(len(vt_bp), int(fs * 4))
     if nperseg < int(fs): return None
     freqs, Pxx = welch(vt_bp, fs=fs, nperseg=max(nperseg, 256), noverlap=nperseg // 2, detrend="constant")
     band = (freqs >= 0.5) & (freqs <= 3.5)
     if not np.any(band): return None
     cad = float(freqs[band][np.argmax(Pxx[band])])
-    if cad < 1.0:  # cadence filter
-        return None
+    if cad < 1.0: return None
 
     f = {}
     f['cadence_hz'] = cad
     f['cadence_power'] = float(Pxx[band].max())
-
-    # Step regularity
     lag = max(1, min(int(round(fs / cad)), len(vt_bp) - 1))
     x = vt_bp - vt_bp.mean(); d = np.dot(x, x)
     f['acf_step_reg'] = float(np.dot(x[:len(x) - lag], x[lag:]) / (d + 1e-12)) if d > 0 else 0
 
-    # Harmonic ratios
     def _hr(sig, cad_f):
         x = sig - sig.mean()
         if len(x) < 2: return np.nan
@@ -218,8 +174,6 @@ def extract_bout_features(xyz, fs=30.0):
     f['hr_ap'] = _hr(ap_bp, cad)
     f['hr_vt'] = _hr(vt_bp, cad)
     f['hr_ml'] = _hr(ml_bp, cad)
-
-    # Step timing
     min_dist = max(1, int(round(0.5 * fs / cad)))
     prom = 0.5 * np.std(vt_bp) if np.std(vt_bp) > 0 else 0
     peaks, _ = find_peaks(vt_bp, distance=min_dist, prominence=prom)
@@ -230,8 +184,6 @@ def extract_bout_features(xyz, fs=30.0):
         f['stride_time_cv'] = float(np.std(si, ddof=1) / np.mean(si)) if np.mean(si) > 0 else np.nan
     else:
         f['stride_time_mean'] = np.nan; f['stride_time_std'] = np.nan; f['stride_time_cv'] = np.nan
-
-    # Amplitude
     f['ml_rms'] = float(np.sqrt(np.mean(ml**2)))
     f['vt_rms'] = float(np.sqrt(np.mean(vt**2)))
     f['ap_rms'] = float(np.sqrt(np.mean(ap**2)))
@@ -243,13 +195,10 @@ def extract_bout_features(xyz, fs=30.0):
     f['jerk_mean'] = float(np.mean(np.abs(np.diff(vm_dyn) * fs)))
     f['signal_energy'] = float(np.mean(vm_dyn**2))
     f['duration_sec'] = len(xyz) / fs
-
     return f
 
 
-# ══════════════════════════════════════════════════════════════════
-# WHOLE-RECORDING ACTIVITY FEATURES
-# ══════════════════════════════════════════════════════════════════
+# ── Activity features ──
 
 def extract_activity_features(xyz, fs):
     vm = np.sqrt(xyz[:, 0]**2 + xyz[:, 1]**2 + xyz[:, 2]**2)
@@ -257,7 +206,6 @@ def extract_activity_features(xyz, fs):
     sec = int(fs); n_secs = len(enmo) // sec
     if n_secs < 60: return None
     enmo_sec = enmo[:n_secs * sec].reshape(n_secs, sec).mean(axis=1)
-
     f = {}
     f['act_enmo_mean'] = np.mean(enmo_sec)
     f['act_enmo_std'] = np.std(enmo_sec)
@@ -272,14 +220,12 @@ def extract_activity_features(xyz, fs):
     hist, _ = np.histogram(enmo_sec, bins=20, density=True)
     hist = hist[hist > 0]; hist = hist / hist.sum()
     f['act_enmo_entropy'] = -np.sum(hist * np.log2(hist + 1e-12))
-
     f['act_pct_sedentary'] = np.mean(enmo_sec < 0.02)
     f['act_pct_light'] = np.mean((enmo_sec >= 0.02) & (enmo_sec < 0.06))
     f['act_pct_moderate'] = np.mean((enmo_sec >= 0.06) & (enmo_sec < 0.1))
     f['act_pct_vigorous'] = np.mean(enmo_sec >= 0.1)
     total_hours = n_secs / 3600
     f['act_mvpa_min_per_hr'] = (np.sum(enmo_sec >= 0.06) / 60) / (total_hours + 1e-12)
-
     active = enmo_sec >= 0.02
     bout_durs = []
     in_b, bs = False, 0
@@ -294,7 +240,6 @@ def extract_activity_features(xyz, fs):
     f['act_bout_mean_dur'] = np.mean(bout_durs) if bout_durs else 0
     f['act_bout_dur_cv'] = np.std(bout_durs) / (np.mean(bout_durs) + 1e-12) if bout_durs else 0
     f['act_longest_bout'] = max(bout_durs) if bout_durs else 0
-
     tas, tsa, ac, sc = 0, 0, 0, 0
     for j in range(len(active) - 1):
         if active[j]: ac += 1; tas += (not active[j + 1])
@@ -302,14 +247,12 @@ def extract_activity_features(xyz, fs):
     f['act_astp'] = tas / (ac + 1e-12)
     f['act_satp'] = tsa / (sc + 1e-12)
     f['act_fragmentation'] = f['act_astp'] + f['act_satp']
-
     third = n_secs // 3
     if third > 60:
         f['act_early_enmo'] = np.mean(enmo_sec[:third])
         f['act_mid_enmo'] = np.mean(enmo_sec[third:2 * third])
         f['act_late_enmo'] = np.mean(enmo_sec[2 * third:])
         f['act_early_late_ratio'] = f['act_early_enmo'] / (f['act_late_enmo'] + 1e-12)
-
     day_len = 15 * 3600
     n_days = max(1, n_secs // day_len)
     if n_days >= 2:
@@ -321,112 +264,157 @@ def extract_activity_features(xyz, fs):
     return f
 
 
+# ── Aggregation ──
+
+def extract_subject_features(xyz_daytime, fs, return_bouts=False):
+    row = {}
+    bouts = detect_walking_bouts(xyz_daytime, fs, min_bout_sec=10, merge_gap_sec=5)
+    bout_feats = []
+    for s, e in bouts:
+        feats = extract_bout_features(xyz_daytime[s:e], fs)
+        if feats is not None:
+            bout_feats.append(feats)
+    if bout_feats:
+        gait_feat_names = sorted(bout_feats[0].keys())
+        arr = np.array([[bf.get(k, np.nan) for k in gait_feat_names] for bf in bout_feats])
+        for j, name in enumerate(gait_feat_names):
+            col = arr[:, j]; valid = col[np.isfinite(col)]
+            if len(valid) < 2: continue
+            row[f'g_{name}_med'] = np.median(valid)
+            row[f'g_{name}_iqr'] = np.percentile(valid, 75) - np.percentile(valid, 25)
+            row[f'g_{name}_p10'] = np.percentile(valid, 10)
+            row[f'g_{name}_p90'] = np.percentile(valid, 90)
+            row[f'g_{name}_max'] = np.max(valid)
+            row[f'g_{name}_cv'] = np.std(valid) / (np.mean(valid) + 1e-12)
+        row['g_n_valid_bouts'] = len(bout_feats)
+        row['g_total_walk_sec'] = sum(bf.get('duration_sec', 0) for bf in bout_feats)
+        durs = [bf.get('duration_sec', 0) for bf in bout_feats]
+        row['g_mean_bout_dur'] = np.mean(durs)
+        row['g_bout_dur_cv'] = np.std(durs) / (np.mean(durs) + 1e-12) if np.mean(durs) > 0 else 0
+    act = extract_activity_features(xyz_daytime, fs)
+    if act:
+        row.update(act)
+    if return_bouts:
+        return row, bouts, bout_feats
+    return row
+
+
+def impute(X):
+    X = X.copy()
+    for j in range(X.shape[1]):
+        m = np.isnan(X[:, j]) | np.isinf(X[:, j])
+        if m.all(): X[:, j] = 0
+        elif m.any(): X[m, j] = np.nanmedian(X[~m, j])
+    return X
+
+
 # ══════════════════════════════════════════════════════════════════
-# MAIN: Extract + cache features
+# MAIN
 # ══════════════════════════════════════════════════════════════════
-
-def extract_all_features(ids_df, save_bouts=True):
-    """Extract clinic-free features for all subjects. Returns DataFrame.
-    If save_bouts=True, saves each walking bout as CSV in walking_bouts/ folder."""
-    gait_feat_names = None
-    results = []
-    BOUT_DIR = BASE / 'walking_bouts'
-
-    for i, (_, r) in enumerate(ids_df.iterrows()):
-        fn = f"{r['cohort']}{int(r['subj_id']):02d}_{int(r['year'])}_{int(r['sixmwd'])}.csv"
-        fp = HOME_DIR / fn
-        row = {'fn': fn}
-
-        if not fp.exists():
-            results.append(row)
-            continue
-
-        home_df = pd.read_csv(fp)
-        has_ts = 'Timestamp' in home_df.columns
-        xyz = home_df[['X', 'Y', 'Z']].values.astype(np.float64)
-        ts = home_df['Timestamp'].values if has_ts else None
-
-        # Per-bout gait features
-        bouts = detect_walking_bouts(xyz, FS, min_bout_sec=10, merge_gap_sec=5)
-
-        # Save walking bouts
-        if save_bouts and bouts:
-            subj_id = f"{r['cohort']}{int(r['subj_id']):02d}"
-            subj_bout_dir = BOUT_DIR / subj_id
-            subj_bout_dir.mkdir(parents=True, exist_ok=True)
-            for bout_idx, (s, e) in enumerate(bouts):
-                dur_sec = (e - s) / FS
-                bout_data = {
-                    'Timestamp': ts[s:e] if ts is not None else np.arange(e - s) / FS,
-                    'X': xyz[s:e, 0],
-                    'Y': xyz[s:e, 1],
-                    'Z': xyz[s:e, 2],
-                }
-                bout_df = pd.DataFrame(bout_data)
-                bout_df.to_csv(subj_bout_dir / f"bout_{bout_idx+1:04d}_{dur_sec:.0f}s.csv", index=False)
-
-        bout_feats = []
-        for s, e in bouts:
-            feats = extract_bout_features(xyz[s:e], FS)
-            if feats is not None:
-                bout_feats.append(feats)
-
-        if bout_feats:
-            if gait_feat_names is None:
-                gait_feat_names = sorted(bout_feats[0].keys())
-            arr = np.array([[bf.get(k, np.nan) for k in gait_feat_names] for bf in bout_feats])
-            for j, name in enumerate(gait_feat_names):
-                col = arr[:, j]; valid = col[np.isfinite(col)]
-                if len(valid) < 2: continue
-                row[f'g_{name}_med'] = np.median(valid)
-                row[f'g_{name}_iqr'] = np.percentile(valid, 75) - np.percentile(valid, 25)
-                row[f'g_{name}_p10'] = np.percentile(valid, 10)
-                row[f'g_{name}_p90'] = np.percentile(valid, 90)
-                row[f'g_{name}_max'] = np.max(valid)
-                row[f'g_{name}_cv'] = np.std(valid) / (np.mean(valid) + 1e-12)
-            row['g_n_valid_bouts'] = len(bout_feats)
-            row['g_total_walk_sec'] = sum(bf.get('duration_sec', 0) for bf in bout_feats)
-            durs = [bf.get('duration_sec', 0) for bf in bout_feats]
-            row['g_mean_bout_dur'] = np.mean(durs)
-            row['g_bout_dur_cv'] = np.std(durs) / (np.mean(durs) + 1e-12) if np.mean(durs) > 0 else 0
-
-        # Activity features
-        act = extract_activity_features(xyz, FS)
-        if act:
-            row.update(act)
-
-        results.append(row)
-        if (i + 1) % 20 == 0:
-            print(f"  [{i+1}/{len(ids_df)}] {fn}: {len(bout_feats)} valid bouts", flush=True)
-
-    return pd.DataFrame(results)
-
 
 if __name__ == '__main__':
-    import time
     t0 = time.time()
 
-    ids = pd.read_csv(BASE / 'feats' / 'target_6mwd.csv')
-    excl = ((ids['cohort'] == 'M') & (ids['subj_id'].isin([22, 44])))
-    ids101 = ids[~excl].reset_index(drop=True)
+    # Load subject list
+    subj_df = pd.read_csv(NPZ_DIR / '_subjects.csv')
+    y = subj_df['sixmwd'].values.astype(float)
+    n = len(subj_df)
+    print(f"n={n} subjects (M={sum(subj_df.cohort=='M')}, C={sum(subj_df.cohort=='C')})")
 
-    print(f"Extracting clinic-free features for {len(ids101)} subjects...")
-    df = extract_all_features(ids101)
-    df.to_csv(BASE / 'feats' / 'home_perbout_features.csv', index=False)
+    # Extract features from cached NPZ + save walking bouts
+    print(f"\nExtracting features + saving walking bouts...")
+    BOUT_DIR = BASE / 'walking_bouts'
+    all_rows = []
+    all_bouts = {}
+    all_bout_feats = {}
+    total_bouts = 0
+    for i, (_, r) in enumerate(subj_df.iterrows()):
+        npz_path = NPZ_DIR / f"{r['key']}.npz"
+        if not npz_path.exists():
+            print(f"  WARNING: {r['key']} NPZ missing")
+            all_rows.append({})
+            continue
+        data = np.load(npz_path)
+        xyz = data['xyz'].astype(np.float64)
+        ts = data['timestamps'] if 'timestamps' in data else np.arange(len(xyz)) / FS
+        row, bouts, bout_feats = extract_subject_features(xyz, FS, return_bouts=True)
+        all_rows.append(row)
+        all_bouts[r['key']] = bouts
+        all_bout_feats[r['key']] = bout_feats
 
-    # Also save Top-20 as NPZ for quick loading
-    top20 = TOP20_FEATURES
-    X = np.full((len(df), len(top20)), np.nan)
-    for j, feat in enumerate(top20):
-        if feat in df.columns:
-            X[:, j] = df[feat].values
-    for j in range(X.shape[1]):
-        m = np.isnan(X[:, j])
-        if m.any(): X[m, j] = np.nanmedian(X[:, j])
+        # Save each walking bout as CSV with timestamps
+        subj_dir = BOUT_DIR / r['key']
+        subj_dir.mkdir(parents=True, exist_ok=True)
+        for bout_idx, (s, e) in enumerate(bouts):
+            dur_sec = (e - s) / FS
+            pd.DataFrame({
+                'Timestamp': ts[s:e],
+                'X': xyz[s:e, 0], 'Y': xyz[s:e, 1], 'Z': xyz[s:e, 2],
+            }).to_csv(subj_dir / f'bout_{bout_idx+1:04d}_{dur_sec:.0f}s.csv', index=False)
+            total_bouts += 1
 
-    np.savez(BASE / 'feats' / 'home_clinicfree_top20.npz',
-             X=X, feature_names=top20, y=ids101['sixmwd'].values)
+        nb = row.get('g_n_valid_bouts', 0)
+        if (i + 1) % 10 == 0:
+            print(f"  [{i+1}/{n}] {r['key']}: {nb} valid bouts, {len(bouts)} total bouts saved", flush=True)
 
-    print(f"Saved feats/home_perbout_features.csv ({len(df)} rows, {len(df.columns)} cols)")
-    print(f"Saved feats/home_clinicfree_top20.npz ({X.shape})")
-    print(f"Done in {time.time() - t0:.0f}s")
+    feat_df = pd.DataFrame(all_rows)
+    print(f"  Saved {total_bouts} walking bouts to walking_bouts/")
+
+    # All 153 accel features
+    accel_cols = [c for c in feat_df.columns]
+    X_accel = impute(feat_df.values.astype(float))
+    n_accel = X_accel.shape[1]
+
+    # Demographics: Demo(4) = cohort_POMS, Age, Sex, BMI (Height dropped)
+    print("\nLoading demographics (Demo(4): cohort_POMS, Age, Sex, BMI)...")
+    demo = pd.read_excel(BASE / 'SwayDemographics.xlsx')
+    demo['cohort'] = demo['ID'].str.extract(r'^([A-Z])')[0]
+    demo['subj_id'] = demo['ID'].str.extract(r'(\d+)')[0].astype(int)
+    p = subj_df.merge(demo, on=['cohort', 'subj_id'], how='left')
+    p['cohort_POMS'] = (p['cohort'] == 'M').astype(int)
+    for c in ['Age', 'Sex', 'BMI']:
+        p[c] = pd.to_numeric(p[c], errors='coerce')
+    demo_cols = ['cohort_POMS', 'Age', 'Sex', 'BMI']
+    X_demo = impute(p[demo_cols].values.astype(float))
+    n_demo = len(demo_cols)
+
+    X_all = np.column_stack([X_accel, X_demo])
+    demo_idx = list(range(n_accel, n_accel + n_demo))
+
+    # ── Best evaluation: Spearman inside LOO + Demo(4), no leakage ──
+    K = 20
+    alpha = 20
+    print(f"\nSpearman inside LOO (no leakage): K={K} + Demo(4), Ridge a={alpha}")
+    preds = np.zeros(n)
+    for tr, te in LeaveOneOut().split(X_all):
+        corrs = [abs(spearmanr(X_all[tr, j], y[tr])[0]) if np.std(X_all[tr, j]) > 0 else 0
+                 for j in range(n_accel)]
+        top_k = sorted(range(n_accel), key=lambda j: corrs[j], reverse=True)[:K]
+        selected = top_k + demo_idx
+        sc = StandardScaler(); m = Ridge(alpha=alpha)
+        m.fit(sc.fit_transform(X_all[tr][:, selected]), y[tr])
+        preds[te] = m.predict(sc.transform(X_all[te][:, selected]))
+    r2 = r2_score(y, preds)
+    mae = mean_absolute_error(y, preds)
+    rho = spearmanr(y, preds)[0]
+    r_val = pearsonr(y, preds)[0]
+    print(f"  R2={r2:.4f}  MAE={mae:.0f}  r={r_val:.3f}  rho={rho:.3f}")
+    print(f"  n={n}, features={K}+{n_demo}={K+n_demo}")
+
+    # ── Save ──
+    FEATS_DIR = BASE / 'feats'
+
+    feat_df.insert(0, 'key', subj_df['key'].values)
+    feat_df.to_csv(FEATS_DIR / 'home_perbout_features.csv', index=False)
+    print(f"\n  Saved feats/home_perbout_features.csv ({feat_df.shape})")
+
+    import pickle
+    with open(FEATS_DIR / 'home_walking_bouts.pkl', 'wb') as f:
+        pickle.dump({'bouts': all_bouts, 'bout_feats': all_bout_feats}, f)
+    print(f"  Saved feats/home_walking_bouts.pkl ({len(all_bouts)} subjects)")
+
+    subj_df[['cohort', 'subj_id', 'year', 'sixmwd']].to_csv(
+        FEATS_DIR / 'target_6mwd.csv', index=False)
+    print(f"  Saved feats/target_6mwd.csv")
+
+    print(f"\nDone in {time.time()-t0:.0f}s")

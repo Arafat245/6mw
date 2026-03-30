@@ -21,17 +21,16 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 BASE = Path(__file__).parent.parent
 
 
-def loo_eval(X, y, alphas=[5, 10, 20, 50, 100]):
-    best = (-999, 0, 0, 10)
-    for a in alphas:
-        pr = np.zeros(len(y))
-        for tr, te in LeaveOneOut().split(X):
-            sc = StandardScaler(); m = Ridge(alpha=a)
-            m.fit(sc.fit_transform(X[tr]), y[tr]); pr[te] = m.predict(sc.transform(X[te]))
-        r2 = r2_score(y, pr)
-        if r2 > best[0]:
-            best = (r2, mean_absolute_error(y, pr), spearmanr(y, pr)[0], a)
-    return best
+def loo_eval(X, y, alpha=5):
+    """LOO CV with fixed alpha (no alpha search = no leakage)."""
+    pr = np.zeros(len(y))
+    for tr, te in LeaveOneOut().split(X):
+        sc = StandardScaler(); m = Ridge(alpha=alpha)
+        m.fit(sc.fit_transform(X[tr]), y[tr]); pr[te] = m.predict(sc.transform(X[te]))
+    r2 = r2_score(y, pr)
+    mae = mean_absolute_error(y, pr)
+    rho = spearmanr(y, pr)[0]
+    return r2, mae, rho
 
 
 def impute(X):
@@ -99,8 +98,8 @@ X_clinic_ws10 = impute(pd.DataFrame(ws_rows).values.astype(float))
 clinic_sway_ratios = impute(sway[['ml_over_enmo', 'ml_over_vt']].values.astype(float))
 X_clinic_ws = np.column_stack([X_clinic_ws10, clinic_sway_ratios])
 
-# ── Home features (from cached home_clinicfree_features.csv) ──
-home_feat_df = pd.read_csv(BASE / 'feats' / 'home_clinicfree_features.csv')
+# ── Home features (from cached home_perbout_features.csv) ──
+home_feat_df = pd.read_csv(BASE / 'feats' / 'home_perbout_features.csv')
 home_accel_cols = [c for c in home_feat_df.columns if c != 'key']
 X_home_accel = impute(home_feat_df[home_accel_cols].values.astype(float))
 
@@ -140,16 +139,16 @@ print(f"n={n}, LOO CV, Ridge\n")
 
 results = []
 
-def add_clinic(name, X, nf):
-    r2, mae, rho, a = loo_eval(X, y)
+def add_clinic(name, X, nf, alpha=5):
+    r2, mae, rho = loo_eval(X, y, alpha=alpha)
     results.append({'Setting': 'Clinic', 'Features': f'{name} ({nf}f)',
                     'R²': round(r2, 4), 'MAE (ft)': round(mae), 'ρ': round(rho, 3)})
-    print(f"  Clinic {name:25s} ({nf:2d}f)  R²={r2:.4f}  MAE={mae:.0f}  ρ={rho:.3f}")
+    print(f"  Clinic {name:25s} ({nf:2d}f)  R²={r2:.4f}  MAE={mae:.0f}  ρ={rho:.3f}  α={alpha}")
 
-add_clinic('Gait', X_clinic_gait, 11)
-add_clinic('CWT', X_clinic_cwt, 28)
-add_clinic('WalkSway', X_clinic_ws, 12)
-add_clinic('Gait+CWT+WS+Demo', np.column_stack([X_clinic_gait, X_clinic_cwt, X_clinic_ws, X_demo4_clinic]), 55)
+add_clinic('Gait', X_clinic_gait, 11, alpha=5)
+add_clinic('CWT', X_clinic_cwt, 28, alpha=20)
+add_clinic('WalkSway', X_clinic_ws, 12, alpha=5)
+add_clinic('Gait+CWT+WS+Demo', np.column_stack([X_clinic_gait, X_clinic_cwt, X_clinic_ws, X_demo4_clinic]), 55, alpha=5)
 
 print()
 
