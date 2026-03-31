@@ -14,33 +14,26 @@ Each row uses the best method/alpha found during experiments:
   - Clinic: no selection, α=5, Demo=Height → R²=0.806
   - Home: Spearman Top-20 on Gait/CWT/WS, α=20, Demo=BMI → R²=0.281
 
-Input:  feats/*.csv + SwayDemographics.xlsx + walking_bouts/
+Input:  feats/*.csv + SwayDemographics.xlsx
 Output: results/results_table_final.csv
 
 Run:  python analysis/reproduce_results_table_final.py
 """
-import math, warnings, time
+import warnings, time
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from scipy.signal import butter, filtfilt
 from scipy.stats import spearmanr
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import LeaveOneOut
 from sklearn.metrics import r2_score, mean_absolute_error
 from sklearn.linear_model import Ridge
-import sys
 
 warnings.filterwarnings('ignore')
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 BASE = Path(__file__).parent.parent
 NPZ_DIR = BASE / 'home_full_recording_npz'
-BOUT_DIR = BASE / 'walking_bouts'
 FT2M = 0.3048
-
-from clinic.reproduce_c2 import extract_gait10, extract_cwt
-from clinic.extract_walking_sway import extract_walking_sway
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -90,110 +83,6 @@ def loo_spearman_append_demo(X_accel, X_demo, y, K=20, alpha=20):
     return r2, mean_absolute_error(y * FT2M, pr * FT2M), spearmanr(y, pr)[0]
 
 
-def find_file(directory, cohort, subj_id):
-    key = f'{cohort}{int(subj_id):02d}'
-    for f in directory.glob(f'{key}_*.csv'):
-        return f
-    return None
-
-
-# ══════════════════════════════════════════════════════════════════
-# HOME GAIT/CWT/WS — VM-based extraction from Top-10 clean bouts
-# ══════════════════════════════════════════════════════════════════
-
-def vm_to_clinic_df(vm, fs):
-    """Create clinic-like DataFrame from raw VM (no mean subtraction)."""
-    b, a = butter(4, [0.25, 2.5], btype='bandpass', fs=fs)
-    vm_bp = filtfilt(b, a, vm)
-    enmo = np.maximum(vm - 1.0, 0.0)
-    return pd.DataFrame({
-        'AP': vm, 'ML': vm, 'VT': vm,
-        'AP_bp': vm_bp, 'ML_bp': vm_bp, 'VT_bp': vm_bp,
-        'VM_dyn': vm, 'VM_raw': vm, 'ENMO': enmo, 'fs': 30,
-    })
-
-
-def bout_quality(xyz, fs=30):
-    first = xyz[:fs].mean(axis=0); last = xyz[-fs:].mean(axis=0)
-    drift = np.linalg.norm(last - first)
-    orient = 0.0
-    if len(xyz) >= 60:
-        half = len(xyz) // 2
-        g1 = xyz[:half].mean(axis=0); g2 = xyz[half:].mean(axis=0)
-        cos_a = np.dot(g1, g2) / (np.linalg.norm(g1) * np.linalg.norm(g2) + 1e-12)
-        orient = np.degrees(np.arccos(np.clip(cos_a, -1, 1)))
-    return drift, orient
-
-
-def get_clean_topN(subj_key, N=10, min_sec=60, max_drift=0.5, max_orient=10):
-    subj_dir = BOUT_DIR / subj_key
-    if not subj_dir.exists(): return []
-    candidates = []
-    for bf in sorted(subj_dir.glob('bout_*.csv')):
-        try:
-            dur = float(bf.stem.split('_')[-1].replace('s', ''))
-            if dur < min_sec: continue
-            df = pd.read_csv(bf)
-            xyz = df[['X', 'Y', 'Z']].values.astype(np.float64)
-            drift, orient = bout_quality(xyz)
-            if drift <= max_drift and orient <= max_orient:
-                candidates.append((dur, bf))
-        except: continue
-    candidates.sort(key=lambda x: x[0], reverse=True)
-    return [bf for _, bf in candidates[:N]]
-
-
-def aggregate_feature_dicts(feat_list):
-    if not feat_list: return {}
-    names = sorted(feat_list[0].keys())
-    arr = np.array([[f.get(k, np.nan) for k in names] for f in feat_list])
-    row = {}
-    for j, name in enumerate(names):
-        col = arr[:, j]; valid = col[np.isfinite(col)]
-        if len(valid) < 2: continue
-        row[f'{name}_med'] = np.median(valid)
-        row[f'{name}_iqr'] = np.percentile(valid, 75) - np.percentile(valid, 25)
-        row[f'{name}_p10'] = np.percentile(valid, 10)
-        row[f'{name}_p90'] = np.percentile(valid, 90)
-        row[f'{name}_max'] = np.max(valid)
-        row[f'{name}_cv'] = np.std(valid) / (np.mean(valid) + 1e-12)
-    return row
-
-
-def extract_home_gait_cwt_ws_vm(subj_df):
-    """Extract Home Gait/CWT/WalkSway using VM-based method from Top-10 clean bouts."""
-    FS = 30
-    gait_rows, cwt_rows, ws_rows = [], [], []
-    for i, (_, r) in enumerate(subj_df.iterrows()):
-        top_bouts = get_clean_topN(r['key'], N=10, min_sec=60, max_drift=0.5, max_orient=10)
-        gait_per, cwt_per, ws_per = [], [], []
-        for bf_path in top_bouts:
-            try:
-                df = pd.read_csv(bf_path)
-                xyz = df[['X', 'Y', 'Z']].values.astype(np.float64)
-                if len(xyz) < int(10 * FS): continue
-                vm = np.sqrt(xyz[:, 0]**2 + xyz[:, 1]**2 + xyz[:, 2]**2)
-                df_vm = vm_to_clinic_df(vm, FS)
-                gf = extract_gait10(df_vm)
-                gf['vt_rms_g'] = float(np.sqrt(np.mean(vm**2)))
-                gait_per.append(gf)
-                cwt_per.append(extract_cwt(xyz.astype(np.float32)))
-                ws = extract_walking_sway(vm, vm, vm)
-                ws['ml_over_enmo'] = gf.get('ml_rms_g', 0) / gf.get('enmo_mean_g', 1e-12) if gf.get('enmo_mean_g', 0) > 0 else np.nan
-                ws['ml_over_vt'] = 1.0
-                ws_per.append(ws)
-            except: continue
-        gait_rows.append(aggregate_feature_dicts(gait_per))
-        cwt_rows.append(aggregate_feature_dicts(cwt_per))
-        ws_rows.append(aggregate_feature_dicts(ws_per))
-        if (i + 1) % 20 == 0:
-            print(f'    [{i + 1}/{len(subj_df)}] Home Gait/CWT/WS extraction', flush=True)
-    X_gait = impute(pd.DataFrame(gait_rows).replace([np.inf, -np.inf], np.nan).values.astype(float))
-    X_cwt = impute(pd.DataFrame(cwt_rows).replace([np.inf, -np.inf], np.nan).values.astype(float))
-    X_ws = impute(pd.DataFrame(ws_rows).replace([np.inf, -np.inf], np.nan).values.astype(float))
-    return X_gait, X_cwt, X_ws
-
-
 # ══════════════════════════════════════════════════════════════════
 # MAIN
 # ══════════════════════════════════════════════════════════════════
@@ -227,9 +116,10 @@ if __name__ == '__main__':
     h_pb = impute(pd.read_csv(FEATS / 'home_perbout_features.csv').drop(columns='key').values.astype(float))
     c_pb = impute(pd.read_csv(FEATS / 'clinic_perbout_features.csv').drop(columns='key').values.astype(float))
 
-    # Extract home Gait/CWT/WS (VM-based, Top-10 clean bouts)
-    print('Extracting Home Gait/CWT/WalkSway (VM-based, Top-10 clean bouts ≥60s)...')
-    h_gait, h_cwt, h_ws = extract_home_gait_cwt_ws_vm(subj_df)
+    # Load cached home Gait/CWT/WS features
+    h_gait = impute(pd.read_csv(FEATS / 'home_gait_features.csv').drop(columns='key').values.astype(float))
+    h_cwt = impute(pd.read_csv(FEATS / 'home_cwt_features.csv').drop(columns='key').values.astype(float))
+    h_ws = impute(pd.read_csv(FEATS / 'home_walksway_features.csv').drop(columns='key').values.astype(float))
 
     print('\nComputing results...')
     rows = []

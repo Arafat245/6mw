@@ -9,14 +9,14 @@ Predicting 6MWD from hip-worn accelerometer data collected during clinic 6-minut
 | Feature Set | #f | Clinic R² | Clinic MAE (m) | Clinic ρ | Home R² | Home MAE (m) | Home ρ |
 |---|---|---|---|---|---|---|---|
 | Gait | 11 | 0.682 | 42.7 | 0.801 | 0.145 | 70.1 | 0.377 |
-| CWT | 28 | 0.357 | 60.2 | 0.601 | 0.150 | 68.0 | 0.461 |
-| WalkSway | 12 | 0.403 | 54.2 | 0.715 | 0.061 | 72.7 | 0.315 |
+| CWT | 28 | 0.357 | 60.2 | 0.601 | 0.150 | 67.9 | 0.462 |
+| WalkSway | 12 | 0.403 | 54.2 | 0.715 | 0.056 | 73.3 | 0.313 |
 | Demo | 4 | 0.362 | 60.8 | 0.595 | 0.362 | 60.8 | 0.595 |
 | PerBout-Top20 | 20 | 0.604 | 46.0 | 0.778 | 0.184 | 67.5 | 0.451 |
 | PerBout-Top20+Demo | 24 | 0.675 | 40.3 | 0.841 | **0.454** | **55.5** | **0.659** |
-| **Gait+CWT+WS+Demo** | **55** | **0.806** | **31.2** | **0.880** | 0.281 | 63.7 | 0.543 |
+| **Gait+CWT+WS+Demo** | **55** | **0.806** | **31.2** | **0.880** | 0.281 | 63.8 | 0.543 |
 
-Reproduce: `python analysis/reproduce_results_table_final.py` (~4 min)
+Reproduce: `python analysis/reproduce_results_table_final.py` (~1 min)
 
 - **n=101**, LOO CV, no data leakage. All metrics in meters.
 - **Demo-only row:** cohort_POMS, Age, Sex, BMI — same for clinic and home, Ridge α=20
@@ -198,7 +198,7 @@ python home/step3_predict.py                               # Predict (<1 sec)
 | `clinic/extract_walking_sway.py` | Clinic WalkSway extraction function |
 | `clinic/extract_gait_cwt_ws_features.py` | Clinic Gait/CWT/WalkSway feature extraction |
 | `clinic/extract_perbout_features.py` | Clinic PerBout feature extraction (60s windows) |
-| `analysis/reproduce_results_table_final.py` | Reproduce results_table_final.csv (~4 min) |
+| `analysis/reproduce_results_table_final.py` | Reproduce results_table_final.csv (~1 min) |
 | `analysis/results_table_full.py` | Full combination tables (no selection + Spearman) |
 | `analysis/results_table_final.py` | Legacy results table |
 
