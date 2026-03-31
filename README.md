@@ -74,19 +74,7 @@ python clinic/extract_gait_cwt_ws_features.py    # ~2 min
 - **CWT (28f):** `extract_cwt()` from raw XYZ VM — Morlet wavelet, 6 temporal segments, mean/std/slope
 - **WalkSway (12f):** `extract_walking_sway()` from preprocessed AP/ML/VT — 10 ENMO-normalized sway features + 2 ratios
 
-### Step 2: PerBout Feature Extraction (124f)
-
-```bash
-python clinic/extract_perbout_features.py    # ~1 min
-# Input:  csv_raw2/*.csv
-# Output: feats/clinic_perbout_features.csv (101 x 125)
-```
-
-- Split 6MWT into 60s non-overlapping windows (trim first/last 10s)
-- Extract 20 per-bout features per window (same features as home PerBout)
-- Aggregate across windows: 6 stats (median, IQR, p10, p90, max, CV) = 120 gait + 4 meta = 124 features
-
-### Step 3: Clinic Prediction
+### Step 2: Clinic Prediction
 
 ```bash
 python clinic/predict.py               # <1 sec (cached features)
@@ -97,15 +85,19 @@ python clinic/predict.py               # <1 sec (cached features)
 
 Gait(11) + CWT(28) + WalkSway(12) + Demo(Height, 4) = 55 features, no feature selection, Ridge α=5.
 
-### Full Pipeline from Scratch
+Quick reproduction: `python clinic/predict.py` (cached features)
+
+### PerBout Feature Extraction (124f)
 
 ```bash
-python clinic/extract_gait_cwt_ws_features.py    # Gait/CWT/WS features (~2 min)
-python clinic/extract_perbout_features.py         # PerBout features (~1 min)
-python clinic/predict.py                          # Predict (<1 sec)
+python clinic/extract_perbout_features.py    # ~1 min
+# Input:  csv_raw2/*.csv
+# Output: feats/clinic_perbout_features.csv (101 x 125)
 ```
 
-Quick reproduction: `python clinic/predict.py` (cached features)
+- Split 6MWT into 60s non-overlapping windows (trim first/last 10s)
+- Extract 20 per-bout features per window (same features as home PerBout)
+- Aggregate across windows: 6 stats (median, IQR, p10, p90, max, CV) = 120 gait + 4 meta = 124 features
 
 ---
 
