@@ -60,31 +60,52 @@ python analysis/results_table_full.py
 
 ## CLINIC PIPELINE
 
-### Feature Extraction
+### Step 1: Gait/CWT/WalkSway Feature Extraction
 
-**Gait (11f), CWT (28f), WalkSway (12f):**
 ```bash
-python clinic/extract_gait_cwt_ws_features.py
+python clinic/extract_gait_cwt_ws_features.py    # ~2 min
 # Input:  csv_preprocessed2/*.csv + csv_raw2/*.csv
 # Output: feats/clinic_gait_features.csv (101 x 12)
 #         feats/clinic_cwt_features.csv (101 x 29)
 #         feats/clinic_walksway_features.csv (101 x 13)
 ```
 
-- **Gait:** `extract_gait10()` from preprocessed AP/ML/VT + `vt_rms_g` — cadence, step regularity, harmonic ratios, jerk, ENMO, cadence slope, spectral entropy
-- **CWT:** `extract_cwt()` from raw XYZ VM — Morlet wavelet, 6 temporal segments, mean/std/slope
-- **WalkSway:** `extract_walking_sway()` from preprocessed AP/ML/VT — 10 ENMO-normalized sway features + 2 ratios
+- **Gait (11f):** `extract_gait10()` from preprocessed AP/ML/VT + `vt_rms_g` — cadence, step regularity, harmonic ratios, jerk, ENMO, cadence slope, spectral entropy
+- **CWT (28f):** `extract_cwt()` from raw XYZ VM — Morlet wavelet, 6 temporal segments, mean/std/slope
+- **WalkSway (12f):** `extract_walking_sway()` from preprocessed AP/ML/VT — 10 ENMO-normalized sway features + 2 ratios
 
-**PerBout (124f) — 60s windows:**
+### Step 2: PerBout Feature Extraction (124f)
+
 ```bash
-python clinic/extract_perbout_features.py
+python clinic/extract_perbout_features.py    # ~1 min
 # Input:  csv_raw2/*.csv
 # Output: feats/clinic_perbout_features.csv (101 x 125)
 ```
 
 - Split 6MWT into 60s non-overlapping windows (trim first/last 10s)
 - Extract 20 per-bout features per window (same features as home PerBout)
-- Aggregate across windows: 6 stats (median, IQR, p10, p90, max, CV) + 4 meta = 124 features
+- Aggregate across windows: 6 stats (median, IQR, p10, p90, max, CV) = 120 gait + 4 meta = 124 features
+
+### Step 3: Clinic Prediction
+
+```bash
+python clinic/predict.py               # <1 sec (cached features)
+# Input:  feats/clinic_gait_features.csv + clinic_cwt_features.csv
+#         + clinic_walksway_features.csv + SwayDemographics.xlsx
+# Output: R²=0.806, MAE=31.2m, ρ=0.880
+```
+
+Gait(11) + CWT(28) + WalkSway(12) + Demo(Height, 4) = 55 features, no feature selection, Ridge α=5.
+
+### Full Pipeline from Scratch
+
+```bash
+python clinic/extract_gait_cwt_ws_features.py    # Gait/CWT/WS features (~2 min)
+python clinic/extract_perbout_features.py         # PerBout features (~1 min)
+python clinic/predict.py                          # Predict (<1 sec)
+```
+
+Quick reproduction: `python clinic/predict.py` (cached features)
 
 ---
 
@@ -124,7 +145,7 @@ python home/step2_extract_features.py      # ~12 min
 # Output: feats/home_perbout_features.csv (101 x 154)
 ```
 
-Per-bout preprocessing: gravity removal → Rodrigues rotation → PCA yaw alignment → AP, ML, VT + bandpass + ENMO. Extract 20 features per bout, aggregate with 6 stats = 124 gait + 4 meta + 29 activity = **153 features**.
+Per-bout preprocessing: gravity removal → Rodrigues rotation → PCA yaw alignment → AP, ML, VT + bandpass + ENMO. Extract 20 features per bout, aggregate with 6 stats (median, IQR, p10, p90, max, CV) = 120 gait + 4 meta + 29 activity = **153 features**.
 
 ### Step 3: Home PerBout Prediction
 
@@ -252,6 +273,7 @@ python analysis/results_table_full.py               # ~13 min
 | `home/step3_predict.py` | Home PerBout prediction (R²=0.454, instant) |
 | `home/extract_gait_cwt_ws_features.py` | Home Gait/CWT/WalkSway features (VM-based) |
 | `home/reproduce_from_bouts.py` | Reproduce from saved bout CSVs [--bout-dir] |
+| `clinic/predict.py` | Clinic prediction (R²=0.806, instant) |
 | `clinic/reproduce_c2.py` | Clinic preprocessing + Gait/CWT extraction functions |
 | `clinic/extract_walking_sway.py` | Clinic WalkSway extraction function |
 | `clinic/extract_gait_cwt_ws_features.py` | Clinic Gait/CWT/WalkSway feature extraction |
