@@ -48,3 +48,9 @@ venv/
 # OS files
 .DS_Store
 Thumbs.db
+
+home_full_recording_npz/
+temp_exps/
+trash/
+*.npz
+references/
