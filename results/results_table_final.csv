@@ -1,4 +1,4 @@
-Feature Set,#f,Clinic R²,Clinic MAE (m),Clinic ρ,Home R²,Home MAE (m),Home ρ
+Feature Set,#f,Clinic R2,Clinic MAE (m),Clinic rho,Home R2,Home MAE (m),Home rho
 Gait,11,0.682,42.7,0.801,0.145,70.1,0.377
 CWT,28,0.357,60.2,0.601,0.15,67.9,0.462
 WalkSway,12,0.403,54.2,0.715,0.056,73.3,0.313

@@ -16,8 +16,6 @@ Predicting 6MWD from hip-worn accelerometer data collected during clinic 6-minut
 | PerBout-Top20+Demo | 24 | 0.675 | 40.3 | 0.841 | **0.454** | **55.5** | **0.659** |
 | **Gait+CWT+WS+Demo** | **55** | **0.806** | **31.2** | **0.880** | 0.281 | 63.8 | 0.543 |
 
-Reproduce: `python analysis/reproduce_results_table_final.py` (~1 min)
-
 - **n=101**, LOO CV, no data leakage. All metrics in meters.
 - **Demo-only row:** cohort_POMS, Age, Sex, BMI — same for clinic and home, Ridge α=20
 - **Demo in combos:** Clinic uses Height, Home uses BMI (different best Demo per setting)
@@ -28,7 +26,23 @@ Reproduce: `python analysis/reproduce_results_table_final.py` (~1 min)
 - **Home Gait/CWT/WS:** VM-based (no gravity removal, no axis alignment), Top-10 clean bouts ≥60s (drift≤0.5g, orient≤10°), per-bout aggregation, Spearman Top-11 inside LOO
 - **Home Gait+CWT+WS+Demo:** Spearman Top-20 on Gait/CWT/WS accel pool, append Demo(BMI), Ridge α=20
 
-Full combination tables: `python analysis/results_table_full.py` (~13 min) → `results/results_no_selection.csv` + `results/results_spearman_top20.csv`
+---
+
+## Quick Reproduction
+
+```bash
+# Results table (7 rows, ~1 min)
+python analysis/reproduce_results_table_final.py
+
+# All paper tables (8 CSVs, ~70 sec)
+python analysis/generate_paper_tables.py
+
+# All paper figures (6 PNGs, ~15 sec)
+python analysis/generate_paper_figures.py
+
+# Full combination tables (~13 min)
+python analysis/results_table_full.py
+```
 
 ---
 
@@ -40,7 +54,7 @@ Full combination tables: `python analysis/results_table_full.py` (~13 min) → `
 | 2 | `csv_raw2/*.csv` | Clinic 6MWT raw data (Timestamp, X, Y, Z). 101 files. |
 | 3 | `csv_preprocessed2/*.csv` | Clinic preprocessed data (AP, ML, VT, _bp, ENMO). 101 files. |
 | 4 | `feats/target_6mwd.csv` | Subject list with 6MWD ground truth (feet). 103 rows, exclude M22/M44 → 101. |
-| 5 | `SwayDemographics.xlsx` | Demographics: ID, Age, Sex, Height, Weight, BMI. |
+| 5 | `SwayDemographics.xlsx` | Demographics: ID, Age, Sex, Height, Weight, BMI, EDSS, MFIS, BDI. |
 
 ---
 
@@ -71,19 +85,6 @@ python clinic/extract_perbout_features.py
 - Split 6MWT into 60s non-overlapping windows (trim first/last 10s)
 - Extract 20 per-bout features per window (same features as home PerBout)
 - Aggregate across windows: 6 stats (median, IQR, p10, p90, max, CV) + 4 meta = 124 features
-
-### Evaluation
-
-```bash
-python analysis/results_table_final.py
-# Produces: Clinic Gait/CWT/WS/Combined + Home PerBout results
-```
-
-- **Gait:** Ridge α=5, LOO CV → R²=0.682
-- **CWT:** Ridge α=20, LOO CV → R²=0.357
-- **WalkSway:** Ridge α=5, LOO CV → R²=0.403
-- **Gait+CWT+WS+Demo:** Ridge α=5, LOO CV → **R²=0.806**
-- **PerBout-Top20+Demo:** Spearman Top-20 inside LOO, Ridge α=20 → R²=0.675
 
 ---
 
@@ -169,14 +170,71 @@ python home/step3_predict.py                               # Predict (<1 sec)
 
 ---
 
+## Evaluation & Paper Outputs
+
+### Results Table
+
+```bash
+python analysis/reproduce_results_table_final.py    # ~1 min
+# Input:  feats/*.csv + SwayDemographics.xlsx
+# Output: results/results_table_final.csv (7 rows)
+```
+
+### Paper Tables (8 CSVs)
+
+```bash
+python analysis/generate_paper_tables.py            # ~70 sec
+# Input:  feats/*.csv + SwayDemographics.xlsx
+# Output: results/paper_tables/*.csv + results/results_table_final.csv
+```
+
+| Table | File | Description |
+|---|---|---|
+| 1 | `results/paper_tables/demographics_table.csv` | Demographic/clinical characteristics by cohort |
+| 2 | `results/paper_tables/feature_descriptions.csv` | Feature categories and names |
+| 3 | `results/paper_tables/best_predictions.csv` | Per-subject LOO predictions (best models) |
+| 4 | `results/paper_tables/error_analysis_by_cohort.csv` | Error metrics by cohort (All/POMS/Healthy) |
+| 5 | `results/paper_tables/feature_correlations.csv` | Spearman ρ with 6MWD by setting/cohort |
+| 6 | `results/paper_tables/ms_vs_healthy_features.csv` | POMS vs Healthy group differences (Cohen's d, BH-corrected) |
+| 7 | `results/paper_tables/clinical_corr_ms_only.csv` | Clinic feature–clinical score correlations (MS only) |
+| 8 | `results/paper_tables/clinical_corr_ms_home.csv` | Home feature–clinical score correlations (MS only) |
+
+### Paper Figures (6 PNGs)
+
+```bash
+python analysis/generate_paper_figures.py           # ~15 sec
+# Input:  feats/*.csv + SwayDemographics.xlsx
+# Output: results/paper_figures/*.png
+```
+
+| Figure | File | Description |
+|---|---|---|
+| 1 | `results/paper_figures/fig_predicted_vs_actual.png` | Predicted vs actual 6MWD scatter (home + clinic) |
+| 2 | `results/paper_figures/fig_bland_altman.png` | Bland-Altman agreement plots |
+| 3 | `results/paper_figures/fig_shap_importance.png` | SHAP feature importance (clinic + home) |
+| 4 | `results/paper_figures/heatmap_feature_6mwd_corr.png` | Feature–6MWD correlation heatmap by setting/cohort |
+| 5 | `results/paper_figures/heatmap_clinical_corr_clinic.png` | Clinic feature–clinical score correlations (POMS only) |
+| 6 | `results/paper_figures/heatmap_clinical_corr_home.png` | Home feature–clinical score correlations (POMS only) |
+
+### Full Combination Tables
+
+```bash
+python analysis/results_table_full.py               # ~13 min
+# Output: results/results_no_selection.csv + results/results_spearman_top20.csv
+```
+
+---
+
 ## All Feature Files
 
 | File | Created by | Features | Description |
 |---|---|---|---|
+| `feats/target_6mwd.csv` | — | — | Ground truth 6MWD (feet), 101 subjects |
 | `feats/clinic_gait_features.csv` | `clinic/extract_gait_cwt_ws_features.py` | 11 + key | Clinic Gait from 6MWT |
 | `feats/clinic_cwt_features.csv` | `clinic/extract_gait_cwt_ws_features.py` | 28 + key | Clinic CWT from 6MWT |
 | `feats/clinic_walksway_features.csv` | `clinic/extract_gait_cwt_ws_features.py` | 12 + key | Clinic WalkSway from 6MWT |
 | `feats/clinic_perbout_features.csv` | `clinic/extract_perbout_features.py` | 124 + key | Clinic PerBout (60s windows) |
+| `feats/home_walking_bouts.pkl` | `home/step1_detect_walking_bouts.py` | — | Walking bout indices per subject |
 | `feats/home_perbout_features.csv` | `home/step2_extract_features.py` | 153 + key | Home PerBout (all bouts) |
 | `feats/home_gait_features.csv` | `home/extract_gait_cwt_ws_features.py` | 66 + key | Home Gait (VM, Top-10 clean bouts) |
 | `feats/home_cwt_features.csv` | `home/extract_gait_cwt_ws_features.py` | 168 + key | Home CWT (VM, Top-10 clean bouts) |
@@ -198,9 +256,10 @@ python home/step3_predict.py                               # Predict (<1 sec)
 | `clinic/extract_walking_sway.py` | Clinic WalkSway extraction function |
 | `clinic/extract_gait_cwt_ws_features.py` | Clinic Gait/CWT/WalkSway feature extraction |
 | `clinic/extract_perbout_features.py` | Clinic PerBout feature extraction (60s windows) |
-| `analysis/reproduce_results_table_final.py` | Reproduce results_table_final.csv (~1 min) |
-| `analysis/results_table_full.py` | Full combination tables (no selection + Spearman) |
-| `analysis/results_table_final.py` | Legacy results table |
+| `analysis/reproduce_results_table_final.py` | Reproduce results table (7 rows, ~1 min) |
+| `analysis/results_table_full.py` | Full combination tables (~13 min) |
+| `analysis/generate_paper_tables.py` | Generate all paper tables (8 CSVs, ~70 sec) |
+| `analysis/generate_paper_figures.py` | Generate all paper figures (6 PNGs, ~15 sec) |
 
 ---
 
@@ -222,11 +281,15 @@ python home/step3_predict.py                               # Predict (<1 sec)
 │   ├── extract_gait_cwt_ws_features.py Gait/CWT/WS feature extraction
 │   └── extract_perbout_features.py   PerBout features (60s windows)
 │
-├── analysis/                       EVALUATION
-│   └── results_table_final.py        Full results table
+├── analysis/                       EVALUATION & PAPER OUTPUTS
+│   ├── reproduce_results_table_final.py  Results table (7 rows)
+│   ├── results_table_full.py             Full combination tables
+│   ├── generate_paper_tables.py          Paper tables (8 CSVs)
+│   └── generate_paper_figures.py         Paper figures (6 PNGs)
 │
-├── feats/                          CACHED FEATURES
+├── feats/                          CACHED FEATURES (10 files)
 │   ├── target_6mwd.csv               Ground truth
+│   ├── home_walking_bouts.pkl        Walking bout indices
 │   ├── home_perbout_features.csv     Home PerBout (153f)
 │   ├── home_gait_features.csv        Home Gait (66f)
 │   ├── home_cwt_features.csv         Home CWT (168f)
@@ -236,8 +299,10 @@ python home/step3_predict.py                               # Predict (<1 sec)
 │   ├── clinic_walksway_features.csv  Clinic WalkSway (12f)
 │   └── clinic_perbout_features.csv   Clinic PerBout (124f)
 │
-├── results/                        RESULTS
-│   └── results_table_final.csv       Final results table
+├── results/                        RESULTS & PAPER OUTPUTS
+│   ├── results_table_final.csv       Results table (7 rows)
+│   ├── paper_tables/                 Paper tables (8 CSVs)
+│   └── paper_figures/                Paper figures (6 PNGs)
 │
 ├── home_full_recording_npz/        Full recording NPZ (101 files, ~2.4 GB)
 ├── walking_bouts/                  Walking bout CSVs (186,012 files)
@@ -246,9 +311,7 @@ python home/step3_predict.py                               # Predict (<1 sec)
 ├── Accel files/                    Raw home GT3X files
 ├── SwayDemographics.xlsx           Demographics
 ├── POMS/                           Paper (LaTeX)
-├── archive/                        Old scripts (not in pipeline)
-├── temporary_experiments/          Scratch space
-└── notebooks/                      Exploratory notebooks
+└── trash/                          Archived old scripts and data
 ```
 
 ---
