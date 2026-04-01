@@ -37,16 +37,17 @@ Predicting 6-Minute Walk Distance (6MWD) from hip-worn accelerometer data in Ped
 - **Tables go to `POMS/tables/`, figures to `POMS/figures/`.**
 
 ### Models
-- **Ridge regression** is the primary model. Current best alphas: Clinic=5, Home=20.
+- **Clinic:** Ridge(α=5) is the best model. Non-linear models (RF, XGBoost, SVR, KNN, GPR) all worse.
+- **Home:** Vote(Ridge(α=20) + Lasso(α=5) + SVR(C=500, γ=0.05)) is the best ensemble. Simple voting outperforms stacking, blending, and all individual models at n=101.
 - **Foundation models** (MOMENT, Chronos, LimuBERT) are comparison baselines only. Handcrafted features beat them.
 - **DL models** (TCN, LSTM, Transformer) are used separately from foundation models, not mixed.
 
 ## Current Best Results
 
-| Setting | Features | R² | MAE (m) | ρ |
-|---|---|---|---|---|
-| Clinic | Gait+CWT+WalkSway+Demo (55f) | 0.806 | 31.1 | 0.880 |
-| Home (clinic-free) | PerBout-Top20+Demo(4) (24f, Spearman inside LOO) | 0.454 | 55.5 | 0.659 |
+| Setting | Features | Model | R² | MAE (m) | ρ |
+|---|---|---|---|---|---|
+| Clinic | Gait+CWT+WalkSway+Demo (55f) | Ridge(α=5) | 0.806 | 31.2 | 0.880 |
+| Home (clinic-free) | PerBout-Top20+Demo(4) (24f, Spearman inside LOO) | Vote(Ridge+Lasso+SVR) | 0.478 | 53.6 | 0.674 |
 
 ## Home Pipeline (step0 → step3)
 
@@ -112,3 +113,4 @@ Full results table: `python analysis/results_table_final.py` (clinic + home)
 - **Residual-guided feature selection:** Select PerBout by correlation with Demo residuals, then early fuse. R²=0.388 — worse than standard Spearman selection (0.478).
 - **Feature interactions (PerBout×Demo cross-terms):** 80 interaction features + Ridge α=100: R²=0.387. Overfits at n=101.
 - **Modality-weighted fusion (inner CV for weight):** R²=0.424 — worse than unweighted concatenation.
+- **Gaussian Process Regression:** Pure non-linear kernels (RBF R²=0.09, Matern R²=0.20) overfit badly. DotProduct+RBF R²=0.450 ≈ Ridge (essentially linear). Blending GPR with Vote doesn't improve (R²=0.474 < 0.478).
