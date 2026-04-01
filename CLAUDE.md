@@ -94,3 +94,21 @@ Full results table: `python analysis/results_table_final.py` (clinic + home)
 - **Home worn-time filter only:** R²=0.407 — worse than no filter
 - **Resampling non-30Hz to 30Hz:** resample_poly R²=0.342, linear interp R²=0.373 — both worse
 - **Walking bout verification:** R²=0.423 — worse than keeping all bouts
+- **Circadian/temporal features (IS, IV, L5/M10, cosinor, bout timing):** 18 new features from clock-time analysis of full recordings. Too weakly correlated with 6MWD — Spearman never selects them over gait features. Standalone R²=0.337.
+- **MRMR selection (inside LOO):** R²=0.423 on PerBout, R²=0.431 on PerBout+Goldman — worse than Spearman Top-20 (0.454). Reducing redundancy hurts.
+- **Goldman PAM features (MSR, HWSR, daily steps):** Only 92/101 subjects have data. With imputation, Spearman-20 R²=0.387, MRMR-20 R²=0.431 — both worse.
+- **Combined pools (PerBout+Circadian+Goldman):** Spearman-20 R²=0.387, MRMR-20 R²=0.401 — adding features beyond PerBout hurts or doesn't help.
+- **Forward selection (outside LOO):** Previously reported R²=0.555 — inflated by selection leakage (feature selection not inside LOO folds). Not valid.
+- **Kernel Ridge Regression (RBF):** All negative R² — severely overfits at n=101. Even with inner 5-fold CV: R²=0.06.
+- **SVR (RBF):** Best individual R²=0.428 (C=1000, γ=0.01) — close but worse than Ridge.
+- **Gait complexity features (sample entropy, spectral entropy, permutation entropy):** 18 features from top-10 longest bouts. Too weakly correlated — Spearman never selects them.
+- **Ridge+SVR blending:** 0.5*Ridge(α=20) + 0.5*SVR(rbf, C=500, γ=0.05) on same Spearman-20 + Demo(4): R²=0.472, MAE=53.8m, ρ=0.691. Modest improvement over R²=0.454 baseline.
+- **Vote(Ridge+Lasso+SVR):** Best ensemble for home. R²=0.478, MAE=53.6m, ρ=0.674. Beats all individual models and 2-model blends.
+- **Stacking regressor (inner 5-fold CV, Ridge meta):** All combos worse than voting at n=101 — inner CV meta-features are too noisy.
+- **Pearson selection (inside LOO):** R²=0.416 Ridge, R²=0.429 blend — worse than Spearman (0.454/0.472). Spearman captures monotonic relationships better.
+- **Clinic non-linear models:** KNN R²=0.460, RF R²=0.652, XGBoost R²=0.663, SVR R²=0.642 — all worse than Ridge R²=0.806. Voting/stacking also worse for clinic.
+- **Late fusion (separate Demo + PerBout models):** Best R²=0.385 (0.7*Demo+0.3*PB) — worse than early fusion (0.478). Loses cross-modal information.
+- **Residual fusion (Demo→residuals→PerBout):** R²=0.363 — worse. Two-stage approach loses information vs joint model.
+- **Residual-guided feature selection:** Select PerBout by correlation with Demo residuals, then early fuse. R²=0.388 — worse than standard Spearman selection (0.478).
+- **Feature interactions (PerBout×Demo cross-terms):** 80 interaction features + Ridge α=100: R²=0.387. Overfits at n=101.
+- **Modality-weighted fusion (inner CV for weight):** R²=0.424 — worse than unweighted concatenation.

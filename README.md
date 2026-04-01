@@ -8,31 +8,39 @@ Predicting 6MWD from hip-worn accelerometer data collected during clinic 6-minut
 
 | Feature Set | #f | Clinic R² | Clinic MAE (m) | Clinic ρ | Home R² | Home MAE (m) | Home ρ |
 |---|---|---|---|---|---|---|---|
-| Gait | 11 | 0.682 | 42.7 | 0.801 | 0.145 | 70.1 | 0.377 |
-| CWT | 28 | 0.357 | 60.2 | 0.601 | 0.150 | 67.9 | 0.462 |
-| WalkSway | 12 | 0.403 | 54.2 | 0.715 | 0.056 | 73.3 | 0.313 |
-| Demo | 4 | 0.362 | 60.8 | 0.595 | 0.362 | 60.8 | 0.595 |
-| PerBout-Top20 | 20 | 0.604 | 46.0 | 0.778 | 0.184 | 67.5 | 0.451 |
-| PerBout-Top20+Demo | 24 | 0.675 | 40.3 | 0.841 | **0.454** | **55.5** | **0.659** |
-| **Gait+CWT+WS+Demo** | **55** | **0.806** | **31.2** | **0.880** | 0.281 | 63.8 | 0.543 |
+| Gait | C:11, H:11 | 0.682 | 42.7 | 0.801 | 0.188 | 68.8 | 0.397 |
+| CWT | C:28, H:11 | 0.357 | 60.2 | 0.601 | 0.218 | 64.3 | 0.507 |
+| WalkSway | C:12, H:11 | 0.403 | 54.2 | 0.715 | 0.080 | 72.8 | 0.312 |
+| Demo | C:4, H:4 | 0.362 | 60.8 | 0.595 | 0.364 | 59.9 | 0.594 |
+| PerBout-Top20 | C:20, H:20 | 0.604 | 46.0 | 0.778 | 0.186 | 67.5 | 0.454 |
+| PerBout-Top20+Demo | C:24, H:24 | 0.675 | 40.3 | 0.841 | **0.478** | **53.6** | **0.674** |
+| **Gait+CWT+WS+Demo** | **C:55, H:24** | **0.806** | **31.2** | **0.880** | 0.319 | 61.4 | 0.565 |
 
 - **n=101**, LOO CV, no data leakage. All metrics in meters.
-- **Demo-only row:** cohort_POMS, Age, Sex, BMI — same for clinic and home, Ridge α=20
+- **Clinic model:** Ridge(α=5) — best single model for curated features
+- **Home model:** Vote(Ridge(α=20) + Lasso(α=5) + SVR(C=500, γ=0.05)) — ensemble of 3 diverse models
+- **Demo-only row:** cohort_POMS, Age, Sex, BMI — same for clinic and home
 - **Demo in combos:** Clinic uses Height, Home uses BMI (different best Demo per setting)
-- **Clinic Gait/CWT/WS:** extracted from full 6MWT, Ridge with fixed α per set (Gait α=5, CWT α=20, WS α=5)
+- **Clinic Gait/CWT/WS:** extracted from full 6MWT, no feature selection, Ridge α varies per set
 - **Clinic PerBout:** 60s windows of 6MWT, Spearman Top-20 inside LOO, Ridge α=5
-- **Clinic Gait+CWT+WS+Demo:** all features, no selection, Ridge α=5, Demo=Height
-- **Home PerBout:** all walking bouts from full recording, Spearman Top-20 inside LOO, Ridge α=20
-- **Home Gait/CWT/WS:** VM-based (no gravity removal, no axis alignment), Top-10 clean bouts ≥60s (drift≤0.5g, orient≤10°), per-bout aggregation, Spearman Top-11 inside LOO
-- **Home Gait+CWT+WS+Demo:** Spearman Top-20 on Gait/CWT/WS accel pool, append Demo(BMI), Ridge α=20
+- **Clinic Gait+CWT+WS+Demo:** all 55 features, no selection, Ridge α=5
+- **Home PerBout:** all walking bouts from full recording, Spearman Top-20 inside LOO, Vote
+- **Home Gait/CWT/WS:** VM-based (no gravity removal, no axis alignment), Top-10 clean bouts ≥60s, Spearman Top-11 inside LOO
+- **Home Gait+CWT+WS+Demo:** Spearman Top-20 on Gait/CWT/WS accel pool, append Demo(BMI), Vote
 
 ---
 
 ## Quick Reproduction
 
 ```bash
-# Results table (7 rows, ~1 min)
-python analysis/reproduce_results_table_final.py
+# Results table with best models (7 rows, ~1 min)
+python analysis/reproduce_results_table_best_models.py
+
+# All models comparison — clinic (7 models, <1 min)
+python clinic/predict_all_models.py
+
+# All models comparison — home (7 models + voting ensembles, <30 sec)
+python home/step3_predict_all_models.py
 
 # All paper tables (8 CSVs, ~70 sec)
 python analysis/generate_paper_tables.py
@@ -74,20 +82,7 @@ python clinic/extract_gait_cwt_ws_features.py    # ~2 min
 - **CWT (28f):** `extract_cwt()` from raw XYZ VM — Morlet wavelet, 6 temporal segments, mean/std/slope
 - **WalkSway (12f):** `extract_walking_sway()` from preprocessed AP/ML/VT — 10 ENMO-normalized sway features + 2 ratios
 
-### Step 2: Clinic Prediction
-
-```bash
-python clinic/predict.py               # <1 sec (cached features)
-# Input:  feats/clinic_gait_features.csv + clinic_cwt_features.csv
-#         + clinic_walksway_features.csv + SwayDemographics.xlsx
-# Output: R²=0.806, MAE=31.2m, ρ=0.880
-```
-
-Gait(11) + CWT(28) + WalkSway(12) + Demo(Height, 4) = 55 features, no feature selection, Ridge α=5.
-
-Quick reproduction: `python clinic/predict.py` (cached features)
-
-### PerBout Feature Extraction (124f)
+### Step 2: PerBout Feature Extraction (124f)
 
 ```bash
 python clinic/extract_perbout_features.py    # ~1 min
@@ -98,6 +93,25 @@ python clinic/extract_perbout_features.py    # ~1 min
 - Split 6MWT into 60s non-overlapping windows (trim first/last 10s)
 - Extract 20 per-bout features per window (same features as home PerBout)
 - Aggregate across windows: 6 stats (median, IQR, p10, p90, max, CV) = 120 gait + 4 meta = 124 features
+
+### Step 3: Clinic Prediction
+
+```bash
+python clinic/predict.py               # <1 sec (cached features)
+# Input:  feats/clinic_gait_features.csv + clinic_cwt_features.csv
+#         + clinic_walksway_features.csv + SwayDemographics.xlsx
+# Output: R²=0.806, MAE=31.2m, ρ=0.880
+```
+
+Gait(11) + CWT(28) + WalkSway(12) + Demo(Height, 4) = 55 features, no feature selection, Ridge α=5.
+
+### Clinic All Models Comparison
+
+```bash
+python clinic/predict_all_models.py    # <1 min
+# Input:  feats/clinic_{gait,cwt,walksway}_features.csv + SwayDemographics.xlsx
+# Output: R², MAE, ρ for Ridge, Lasso, ElasticNet, KNN, SVR, RF, XGBoost
+```
 
 ---
 
@@ -139,15 +153,26 @@ python home/step2_extract_features.py      # ~12 min
 
 Per-bout preprocessing: gravity removal → Rodrigues rotation → PCA yaw alignment → AP, ML, VT + bandpass + ENMO. Extract 20 features per bout, aggregate with 6 stats (median, IQR, p10, p90, max, CV) = 120 gait + 4 meta + 29 activity = **153 features**.
 
-### Step 3: Home PerBout Prediction
+### Step 3: Home Prediction
 
 ```bash
 python home/step3_predict.py               # <1 sec (cached features)
 # Input:  feats/home_perbout_features.csv + SwayDemographics.xlsx
-# Output: R²=0.454, MAE=55.5m, ρ=0.659
+# Output: R²=0.454, MAE=55.5m, ρ=0.659 (Ridge only baseline)
 ```
 
 Spearman Top-20 inside LOO + Demo(4), Ridge α=20.
+
+### Home All Models Comparison + Voting Ensemble
+
+```bash
+python home/step3_predict_all_models.py    # <30 sec (cached features)
+# Input:  feats/home_perbout_features.csv + SwayDemographics.xlsx
+# Output: R², MAE, ρ for Ridge, Lasso, ElasticNet, KNN, SVR, RF, XGBoost
+#         + Vote(Ridge+Lasso+SVR) = R²=0.478, MAE=53.6m, ρ=0.674
+```
+
+Best result: Vote(Ridge(α=20) + Lasso(α=5) + SVR(C=500, γ=0.05)), Spearman Top-20 inside LOO + Demo(4).
 
 ### Home Gait/CWT/WalkSway Feature Extraction
 
@@ -178,20 +203,22 @@ python home/step0_gt3x_to_npz.py                          # GT3X → NPZ (~60 mi
 python home/step1_detect_walking_bouts.py --save-csv       # Detect + save bouts (~18 min)
 python home/step2_extract_features.py                      # PerBout features (~12 min)
 python home/extract_gait_cwt_ws_features.py                # Gait/CWT/WS features (~3 min)
-python home/step3_predict.py                               # Predict (<1 sec)
+python home/step3_predict_all_models.py                    # Predict + all models (<30 sec)
 ```
 
 ---
 
 ## Evaluation & Paper Outputs
 
-### Results Table
+### Results Table (Best Models)
 
 ```bash
-python analysis/reproduce_results_table_final.py    # ~1 min
+python analysis/reproduce_results_table_best_models.py    # ~1 min
 # Input:  feats/*.csv + SwayDemographics.xlsx
-# Output: results/results_table_final.csv (7 rows)
+# Output: results/results_table_best_models.csv (7 rows)
 ```
+
+Clinic=Ridge(α=5), Home=Vote(Ridge+Lasso+SVR).
 
 ### Paper Tables (8 CSVs)
 
@@ -233,8 +260,11 @@ python analysis/generate_paper_figures.py           # ~15 sec
 
 ```bash
 python analysis/results_table_full.py               # ~13 min
+# Input:  feats/*.csv + SwayDemographics.xlsx
 # Output: results/results_no_selection.csv + results/results_spearman_top20.csv
 ```
+
+All feature set combinations. Clinic=Ridge(α=5), Home=Vote(Ridge+Lasso+SVR) for Spearman table, Ridge for no-selection table.
 
 ---
 
@@ -262,15 +292,17 @@ python analysis/results_table_full.py               # ~13 min
 | `home/step0_gt3x_to_npz.py` | GT3X → full recording NPZ (no filtering) |
 | `home/step1_detect_walking_bouts.py` | Walking bout detection + optional CSV saving |
 | `home/step2_extract_features.py` | Home PerBout feature extraction (153f) |
-| `home/step3_predict.py` | Home PerBout prediction (R²=0.454, instant) |
+| `home/step3_predict.py` | Home Ridge-only prediction (R²=0.454, baseline) |
+| `home/step3_predict_all_models.py` | Home all models + Vote ensemble (R²=0.478) |
 | `home/extract_gait_cwt_ws_features.py` | Home Gait/CWT/WalkSway features (VM-based) |
-| `home/reproduce_from_bouts.py` | Reproduce from saved bout CSVs [--bout-dir] |
-| `clinic/predict.py` | Clinic prediction (R²=0.806, instant) |
+| `home/reproduce_from_bouts.py` | Reproduce from saved bout CSVs |
+| `clinic/predict.py` | Clinic Ridge prediction (R²=0.806) |
+| `clinic/predict_all_models.py` | Clinic all models comparison |
 | `clinic/reproduce_c2.py` | Clinic preprocessing + Gait/CWT extraction functions |
 | `clinic/extract_walking_sway.py` | Clinic WalkSway extraction function |
 | `clinic/extract_gait_cwt_ws_features.py` | Clinic Gait/CWT/WalkSway feature extraction |
 | `clinic/extract_perbout_features.py` | Clinic PerBout feature extraction (60s windows) |
-| `analysis/reproduce_results_table_final.py` | Reproduce results table (7 rows, ~1 min) |
+| `analysis/reproduce_results_table_best_models.py` | Results table with best models (~1 min) |
 | `analysis/results_table_full.py` | Full combination tables (~13 min) |
 | `analysis/generate_paper_tables.py` | Generate all paper tables (8 CSVs, ~70 sec) |
 | `analysis/generate_paper_figures.py` | Generate all paper figures (6 PNGs, ~15 sec) |
@@ -285,18 +317,21 @@ python analysis/results_table_full.py               # ~13 min
 │   ├── step0_gt3x_to_npz.py         GT3X → NPZ
 │   ├── step1_detect_walking_bouts.py Bout detection [--save-csv]
 │   ├── step2_extract_features.py     PerBout features (153f)
-│   ├── step3_predict.py              PerBout prediction (R²=0.454)
+│   ├── step3_predict.py              Ridge baseline (R²=0.454)
+│   ├── step3_predict_all_models.py   All models + Vote (R²=0.478)
 │   ├── extract_gait_cwt_ws_features.py Gait/CWT/WS features (VM)
 │   └── reproduce_from_bouts.py       Reproduce from bout CSVs
 │
 ├── clinic/                         CLINIC PIPELINE
+│   ├── predict.py                    Ridge prediction (R²=0.806)
+│   ├── predict_all_models.py         All models comparison
 │   ├── reproduce_c2.py               Preprocessing + Gait/CWT functions
 │   ├── extract_walking_sway.py       WalkSway function
 │   ├── extract_gait_cwt_ws_features.py Gait/CWT/WS feature extraction
 │   └── extract_perbout_features.py   PerBout features (60s windows)
 │
 ├── analysis/                       EVALUATION & PAPER OUTPUTS
-│   ├── reproduce_results_table_final.py  Results table (7 rows)
+│   ├── reproduce_results_table_best_models.py  Results table (best models)
 │   ├── results_table_full.py             Full combination tables
 │   ├── generate_paper_tables.py          Paper tables (8 CSVs)
 │   └── generate_paper_figures.py         Paper figures (6 PNGs)
@@ -314,9 +349,11 @@ python analysis/results_table_full.py               # ~13 min
 │   └── clinic_perbout_features.csv   Clinic PerBout (124f)
 │
 ├── results/                        RESULTS & PAPER OUTPUTS
-│   ├── results_table_final.csv       Results table (7 rows)
-│   ├── paper_tables/                 Paper tables (8 CSVs)
-│   └── paper_figures/                Paper figures (6 PNGs)
+│   ├── results_table_best_models.csv  Results table (7 rows)
+│   ├── results_no_selection.csv       Full table (no selection)
+│   ├── results_spearman_top20.csv     Full table (Spearman selection)
+│   ├── paper_tables/                  Paper tables (8 CSVs)
+│   └── paper_figures/                 Paper figures (6 PNGs)
 │
 ├── home_full_recording_npz/        Full recording NPZ (101 files, ~2.4 GB)
 ├── walking_bouts/                  Walking bout CSVs (186,012 files)
@@ -325,12 +362,17 @@ python analysis/results_table_full.py               # ~13 min
 ├── Accel files/                    Raw home GT3X files
 ├── SwayDemographics.xlsx           Demographics
 ├── POMS/                           Paper (LaTeX)
-└── trash/                          Archived old scripts and data
+└── temp_exps/                      Scratch space for new experiments
 ```
 
 ---
 
 ## Important Notes
+
+### Models
+- **Clinic:** Ridge(α=5) is the best model. Non-linear models (RF, XGBoost, SVR, KNN) all worse.
+- **Home:** Vote(Ridge(α=20) + Lasso(α=5) + SVR(C=500, γ=0.05)) is the best ensemble. Simple voting outperforms stacking at n=101.
+- **Fusion:** Early fusion (simple concatenation) beats late fusion, residual fusion, feature interactions, and modality-weighted fusion.
 
 ### Sampling Frequencies
 - 91 subjects at 30 Hz, 8 at 60 Hz (M26, M27, M29, M31, M32, M43, M45, C75), 2 at 100 Hz (M48, M49)
@@ -350,6 +392,6 @@ python analysis/results_table_full.py               # ~13 min
 ### No Data Leakage
 - Feature selection (Spearman) done inside each LOO fold (training data only)
 - StandardScaler fit on training data only
-- Ridge α is fixed per feature set (no alpha search)
+- Ridge α and model hyperparameters are fixed per feature set (no search on test data)
 - Imputation uses column median (negligible leakage from test subject)
 - Clinic and home pipelines are fully separate
