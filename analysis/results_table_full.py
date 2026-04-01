@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Full results tables: all feature set combinations with and without feature selection.
-Best model per setting: Clinic=Ridge(α=5), Home=Vote(Ridge+Lasso+SVR).
+Both Clinic and Home use Ridge regression.
 
 Table 1: No feature selection on Gait/CWT/WS (appended as-is to fixed blocks)
 Table 2: Spearman Top-20 on Gait/CWT/WS (selection inside LOO)
@@ -25,8 +25,7 @@ from scipy.stats import spearmanr
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import LeaveOneOut
 from sklearn.metrics import r2_score, mean_absolute_error
-from sklearn.linear_model import Ridge, Lasso
-from sklearn.svm import SVR
+from sklearn.linear_model import Ridge
 
 warnings.filterwarnings('ignore')
 
@@ -46,12 +45,11 @@ def impute(X):
     return X
 
 
-def loo_combined(X_parts_fixed, X_parts_select, y, K_select=20, alpha=20, use_vote=False):
+def loo_combined(X_parts_fixed, X_parts_select, y, K_select=20, alpha=20):
     """
     LOO CV with fixed and selectable feature blocks.
     Fixed blocks: appended as-is (PerBout uses its own Spearman Top-20 per fold).
     Selectable blocks: concatenated, then Spearman Top-K applied inside LOO.
-    use_vote: if True, Vote(Ridge+Lasso+SVR) instead of Ridge alone.
     """
     n = len(y)
     pr = np.zeros(n)
@@ -110,13 +108,7 @@ def loo_combined(X_parts_fixed, X_parts_select, y, K_select=20, alpha=20, use_vo
         sc = StandardScaler()
         X_tr_s = sc.fit_transform(X_tr)
         X_te_s = sc.transform(X_te)
-        if use_vote:
-            p_r = Ridge(alpha=alpha).fit(X_tr_s, y[tr]).predict(X_te_s)[0]
-            p_l = Lasso(alpha=5, max_iter=5000).fit(X_tr_s, y[tr]).predict(X_te_s)[0]
-            p_s = SVR(kernel='rbf', C=500, gamma=0.05).fit(X_tr_s, y[tr]).predict(X_te_s)[0]
-            pr[i] = (p_r + p_l + p_s) / 3
-        else:
-            pr[i] = Ridge(alpha=alpha).fit(X_tr_s, y[tr]).predict(X_te_s)[0]
+        pr[i] = Ridge(alpha=alpha).fit(X_tr_s, y[tr]).predict(X_te_s)[0]
 
     r2 = r2_score(y, pr)
     mae = mean_absolute_error(y * FT2M, pr * FT2M)
@@ -169,7 +161,7 @@ def run_table(table_name, use_selection, sel_sets_c, sel_sets_h, sel_names,
                     else:
                         c_fixed.append((sel_sets_c[sn], sn))
                 K_c = min(20, sum(x.shape[1] for x, _ in c_select)) if c_select else 0
-                cr2, cmae, crho = loo_combined(c_fixed, c_select, y, K_select=K_c, alpha=C_ALPHA, use_vote=False)
+                cr2, cmae, crho = loo_combined(c_fixed, c_select, y, K_select=K_c, alpha=C_ALPHA)
 
                 # --- HOME ---
                 h_fixed = []; h_select = []
@@ -186,8 +178,7 @@ def run_table(table_name, use_selection, sel_sets_c, sel_sets_h, sel_names,
                     else:
                         h_fixed.append((sel_sets_h[sn], sn))
                 K_h = min(20, sum(x.shape[1] for x, _ in h_select)) if h_select else 0
-                # Vote only when Spearman selection is active; Ridge-only otherwise (SVR overfits without selection)
-                hr2, hmae, hrho = loo_combined(h_fixed, h_select, y, K_select=K_h, alpha=H_ALPHA, use_vote=use_selection)
+                hr2, hmae, hrho = loo_combined(h_fixed, h_select, y, K_select=K_h, alpha=H_ALPHA)
 
                 print(f'{label:<55s} {cr2:>6.3f} {cmae:>6.1f} {crho:>6.3f}  '
                       f'{hr2:>6.3f} {hmae:>6.1f} {hrho:>6.3f}')
@@ -240,7 +231,7 @@ if __name__ == '__main__':
     sel_sets_h = {'Gait': h_gait, 'CWT': h_cwt, 'WalkSway': h_ws}
     sel_names = ['Gait', 'CWT', 'WalkSway']
 
-    print(f'n={n}, LOO CV, Clinic=Ridge(α={C_ALPHA}), Home=Vote(Ridge+Lasso+SVR)')
+    print(f'n={n}, LOO CV, Clinic=Ridge(α={C_ALPHA}), Home=Ridge(α={H_ALPHA})')
     print(f'PerBout-Top20: Spearman inside LOO (fixed block)')
     print(f'Demo-only row: cohort_POMS, Age, Sex, BMI (same for both)')
     print(f'Demo in combos: Clinic=Height, Home=BMI')

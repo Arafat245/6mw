@@ -8,25 +8,26 @@ Predicting 6MWD from hip-worn accelerometer data collected during clinic 6-minut
 
 | Feature Set | #f | Clinic R² | Clinic MAE (m) | Clinic ρ | Home R² | Home MAE (m) | Home ρ |
 |---|---|---|---|---|---|---|---|
-| Gait | C:11, H:11 | 0.682 | 42.7 | 0.801 | 0.188 | 68.8 | 0.397 |
-| CWT | C:28, H:11 | 0.357 | 60.2 | 0.601 | 0.218 | 64.3 | 0.507 |
-| WalkSway | C:12, H:11 | 0.403 | 54.2 | 0.715 | 0.080 | 72.8 | 0.312 |
-| Demo | C:4, H:4 | 0.362 | 60.8 | 0.595 | 0.364 | 59.9 | 0.594 |
-| PerBout-Top20 | C:20, H:20 | 0.604 | 46.0 | 0.778 | 0.186 | 67.5 | 0.454 |
-| PerBout-Top20+Demo | C:24, H:24 | 0.675 | 40.3 | 0.841 | **0.478** | **53.6** | **0.674** |
-| **Gait+CWT+WS+Demo** | **C:55, H:24** | **0.806** | **31.2** | **0.880** | 0.319 | 61.4 | 0.565 |
+| Gait | 11 | 0.682 | 42.7 | 0.801 | 0.145 | 70.1 | 0.377 |
+| CWT | 28 | 0.357 | 60.2 | 0.601 | 0.150 | 67.9 | 0.462 |
+| WalkSway | 12 | 0.403 | 54.2 | 0.715 | 0.056 | 73.3 | 0.313 |
+| Demo | 4 | 0.362 | 60.8 | 0.595 | 0.362 | 60.8 | 0.595 |
+| PerBout-Top20 | 20 | 0.604 | 46.0 | 0.778 | 0.184 | 67.5 | 0.451 |
+| PerBout-Top20+Demo | 24 | 0.675 | 40.3 | 0.841 | **0.454** | **55.5** | **0.659** |
+| **Gait+CWT+WS+Demo** | **55** | **0.806** | **31.2** | **0.880** | 0.281 | 63.8 | 0.543 |
+
+Reproduce: `python analysis/reproduce_results_table_best_models.py` (~1 min)
 
 - **n=101**, LOO CV, no data leakage. All metrics in meters.
-- **Clinic model:** Ridge(α=5) — best single model for curated features
-- **Home model:** Vote(Ridge(α=20) + Lasso(α=5) + SVR(C=500, γ=0.05)) — ensemble of 3 diverse models
-- **Demo-only row:** cohort_POMS, Age, Sex, BMI — same for clinic and home
+- **Both clinic and home use Ridge regression.** Clinic α=5, Home α=20.
+- **Demo-only row:** cohort_POMS, Age, Sex, BMI — same for clinic and home, Ridge α=20
 - **Demo in combos:** Clinic uses Height, Home uses BMI (different best Demo per setting)
 - **Clinic Gait/CWT/WS:** extracted from full 6MWT, no feature selection, Ridge α varies per set
 - **Clinic PerBout:** 60s windows of 6MWT, Spearman Top-20 inside LOO, Ridge α=5
 - **Clinic Gait+CWT+WS+Demo:** all 55 features, no selection, Ridge α=5
-- **Home PerBout:** all walking bouts from full recording, Spearman Top-20 inside LOO, Vote
+- **Home PerBout:** all walking bouts from full recording, Spearman Top-20 inside LOO, Ridge α=20
 - **Home Gait/CWT/WS:** VM-based (no gravity removal, no axis alignment), Top-10 clean bouts ≥60s, Spearman Top-11 inside LOO
-- **Home Gait+CWT+WS+Demo:** Spearman Top-20 on Gait/CWT/WS accel pool, append Demo(BMI), Vote
+- **Home Gait+CWT+WS+Demo:** Spearman Top-20 on Gait/CWT/WS accel pool, append Demo(BMI), Ridge α=20
 
 ---
 
@@ -39,7 +40,7 @@ python analysis/reproduce_results_table_best_models.py
 # All models comparison — clinic (7 models, <1 min)
 python clinic/predict_all_models.py
 
-# All models comparison — home (7 models + voting ensembles, <30 sec)
+# All models comparison — home (7 models + voting ensembles for reference, <30 sec)
 python home/step3_predict_all_models.py
 
 # All paper tables (8 CSVs, ~70 sec)
@@ -168,11 +169,10 @@ Spearman Top-20 inside LOO + Demo(4), Ridge α=20.
 ```bash
 python home/step3_predict_all_models.py    # <30 sec (cached features)
 # Input:  feats/home_perbout_features.csv + SwayDemographics.xlsx
-# Output: R², MAE, ρ for Ridge, Lasso, ElasticNet, KNN, SVR, RF, XGBoost
-#         + Vote(Ridge+Lasso+SVR) = R²=0.478, MAE=53.6m, ρ=0.674
+# Output: R², MAE, ρ for Ridge, Lasso, ElasticNet, KNN, SVR, RF, XGBoost + voting ensembles
 ```
 
-Best result: Vote(Ridge(α=20) + Lasso(α=5) + SVR(C=500, γ=0.05)), Spearman Top-20 inside LOO + Demo(4).
+Comparison script only — Ridge(α=20) is used as the home model (R²=0.454). Vote ensemble (R²=0.478) gives only marginal improvement, not worth the added complexity.
 
 ### Home Gait/CWT/WalkSway Feature Extraction
 
@@ -218,7 +218,7 @@ python analysis/reproduce_results_table_best_models.py    # ~1 min
 # Output: results/results_table_best_models.csv (7 rows)
 ```
 
-Clinic=Ridge(α=5), Home=Vote(Ridge+Lasso+SVR).
+Clinic=Ridge(α=5), Home=Ridge(α=20).
 
 ### Paper Tables (8 CSVs)
 
@@ -264,7 +264,7 @@ python analysis/results_table_full.py               # ~13 min
 # Output: results/results_no_selection.csv + results/results_spearman_top20.csv
 ```
 
-All feature set combinations. Clinic=Ridge(α=5), Home=Vote(Ridge+Lasso+SVR) for Spearman table, Ridge for no-selection table.
+All feature set combinations. Clinic=Ridge(α=5), Home=Ridge(α=20).
 
 ---
 
@@ -293,7 +293,7 @@ All feature set combinations. Clinic=Ridge(α=5), Home=Vote(Ridge+Lasso+SVR) for
 | `home/step1_detect_walking_bouts.py` | Walking bout detection + optional CSV saving |
 | `home/step2_extract_features.py` | Home PerBout feature extraction (153f) |
 | `home/step3_predict.py` | Home Ridge-only prediction (R²=0.454, baseline) |
-| `home/step3_predict_all_models.py` | Home all models + Vote ensemble (R²=0.478) |
+| `home/step3_predict_all_models.py` | Home all models comparison (Ridge best, R²=0.454) |
 | `home/extract_gait_cwt_ws_features.py` | Home Gait/CWT/WalkSway features (VM-based) |
 | `home/reproduce_from_bouts.py` | Reproduce from saved bout CSVs |
 | `clinic/predict.py` | Clinic Ridge prediction (R²=0.806) |
@@ -318,7 +318,7 @@ All feature set combinations. Clinic=Ridge(α=5), Home=Vote(Ridge+Lasso+SVR) for
 │   ├── step1_detect_walking_bouts.py Bout detection [--save-csv]
 │   ├── step2_extract_features.py     PerBout features (153f)
 │   ├── step3_predict.py              Ridge baseline (R²=0.454)
-│   ├── step3_predict_all_models.py   All models + Vote (R²=0.478)
+│   ├── step3_predict_all_models.py   All models comparison
 │   ├── extract_gait_cwt_ws_features.py Gait/CWT/WS features (VM)
 │   └── reproduce_from_bouts.py       Reproduce from bout CSVs
 │
@@ -371,7 +371,7 @@ All feature set combinations. Clinic=Ridge(α=5), Home=Vote(Ridge+Lasso+SVR) for
 
 ### Models
 - **Clinic:** Ridge(α=5) is the best model. Non-linear models (RF, XGBoost, SVR, KNN) all worse.
-- **Home:** Vote(Ridge(α=20) + Lasso(α=5) + SVR(C=500, γ=0.05)) is the best ensemble. Simple voting outperforms stacking at n=101.
+- **Home:** Ridge(α=20) is the best model. Vote ensemble (R²=0.478) offers only marginal gain over Ridge (R²=0.454), not worth the complexity.
 - **Fusion:** Early fusion (simple concatenation) beats late fusion, residual fusion, feature interactions, and modality-weighted fusion.
 
 ### Sampling Frequencies
