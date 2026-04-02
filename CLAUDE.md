@@ -90,7 +90,7 @@ Full results table: `python analysis/results_table_final.py` (clinic + home)
 
 ## Experiment History
 
-- **Clinic per-bout (60s windows):** PerBout-Top20+Demo(4) R²=0.675 — use 60s windows, not 30s
+- **Clinic per-bout (60s windows):** PerBout-Top20+Demo(4) R²=0.679 — use 60s windows, not 30s
 - **Home daytime only:** R²=0.365 — worse than full recording
 - **Home worn-time filter only:** R²=0.407 — worse than no filter
 - **Resampling non-30Hz to 30Hz:** resample_poly R²=0.342, linear interp R²=0.373 — both worse
@@ -114,3 +114,6 @@ Full results table: `python analysis/results_table_final.py` (clinic + home)
 - **Feature interactions (PerBout×Demo cross-terms):** 80 interaction features + Ridge α=100: R²=0.387. Overfits at n=101.
 - **Modality-weighted fusion (inner CV for weight):** R²=0.424 — worse than unweighted concatenation.
 - **Gaussian Process Regression:** Pure non-linear kernels (RBF R²=0.09, Matern R²=0.20) overfit badly. DotProduct+RBF R²=0.450 ≈ Ridge (essentially linear). No improvement over Ridge.
+- **Transfer learning from external 6MWT dataset (Nature Sci Data 2025, 60 healthy adults):** Trained Ridge on per-path gait features→6MWD from 60 subjects' controlled 6MWT (lower-back IMU, 100Hz→30Hz). Applied to home bouts as "virtual clinic assessment." Transfer-only+Demo R²=0.323, transfer median+Demo R²=0.356. Pooled with PerBout features: R²=0.453 (+0.001) — negligible. Domain gap too large (controlled vs free-living, healthy vs POMS).
+- **LLM few-shot prediction (Claude Haiku):** 100 training subjects as in-context examples with 8 gait features + demographics, predict held-out 6MWD. R²=0.341, MAE=62.4m, ρ=0.602. Ensembling 0.3*LLM+0.7*Ridge: R²=0.441 — worse than Ridge alone. LLMs can't match Ridge's numeric precision.
+- **RAG-inspired patient similarity (k-NN + Ridge blend):** Inverse-distance-weighted k-NN in standardized feature space, blended with Ridge. All configs (k=3/5/7/10, α=0.5–0.8) worse than pure Ridge. k-NN adds noise at n=101.

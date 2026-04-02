@@ -8,13 +8,13 @@ Predicting 6MWD from hip-worn accelerometer data collected during clinic 6-minut
 
 | Feature Set | #f | Clinic R² | Clinic MAE (m) | Clinic ρ | Home R² | Home MAE (m) | Home ρ |
 |---|---|---|---|---|---|---|---|
-| Gait | 11 | 0.682 | 42.7 | 0.801 | 0.084 | 70.5 | 0.384 |
+| Gait | 11 | 0.682 | 42.7 | 0.801 | 0.145 | 70.1 | 0.377 |
 | CWT | 28 | 0.357 | 60.2 | 0.601 | 0.150 | 67.9 | 0.462 |
-| WalkSway | 12 | 0.403 | 54.2 | 0.715 | 0.097 | 71.3 | 0.365 |
+| WalkSway | 12 | 0.403 | 54.2 | 0.715 | 0.056 | 73.3 | 0.313 |
 | Demo | 4 | 0.362 | 60.8 | 0.595 | 0.362 | 60.8 | 0.595 |
 | PerBout-Top20 | 20 | 0.617 | 45.0 | 0.791 | 0.182 | 67.2 | 0.453 |
 | PerBout-Top20+Demo | 24 | 0.679 | 39.7 | 0.841 | **0.452** | **56.0** | **0.649** |
-| **Gait+CWT+WS+Demo** | **55** | **0.806** | **31.2** | **0.880** | 0.247 | 64.9 | 0.540 |
+| **Gait+CWT+WS+Demo** | **55** | **0.806** | **31.2** | **0.880** | 0.281 | 63.8 | 0.543 |
 
 Reproduce: `python analysis/reproduce_results_table_best_models.py` (~1 min)
 
