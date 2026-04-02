@@ -7,7 +7,7 @@ Output: feats/clinic_gait_features.csv (11 features x 101 subjects)
         feats/clinic_cwt_features.csv (28 features x 101 subjects)
         feats/clinic_walksway_features.csv (12 features x 101 subjects)
 
-Run:  python temporary_experiments/extract_clinic_gait_cwt_ws_features.py
+Run:  python clinic/extract_gait_cwt_ws_features.py
 """
 import time, warnings, sys
 import numpy as np

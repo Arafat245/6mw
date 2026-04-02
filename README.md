@@ -8,13 +8,13 @@ Predicting 6MWD from hip-worn accelerometer data collected during clinic 6-minut
 
 | Feature Set | #f | Clinic R² | Clinic MAE (m) | Clinic ρ | Home R² | Home MAE (m) | Home ρ |
 |---|---|---|---|---|---|---|---|
-| Gait | 11 | 0.682 | 42.7 | 0.801 | 0.145 | 70.1 | 0.377 |
+| Gait | 11 | 0.682 | 42.7 | 0.801 | 0.084 | 70.5 | 0.384 |
 | CWT | 28 | 0.357 | 60.2 | 0.601 | 0.150 | 67.9 | 0.462 |
-| WalkSway | 12 | 0.403 | 54.2 | 0.715 | 0.056 | 73.3 | 0.313 |
+| WalkSway | 12 | 0.403 | 54.2 | 0.715 | 0.097 | 71.3 | 0.365 |
 | Demo | 4 | 0.362 | 60.8 | 0.595 | 0.362 | 60.8 | 0.595 |
-| PerBout-Top20 | 20 | 0.604 | 46.0 | 0.778 | 0.184 | 67.5 | 0.451 |
-| PerBout-Top20+Demo | 24 | 0.675 | 40.3 | 0.841 | **0.454** | **55.5** | **0.659** |
-| **Gait+CWT+WS+Demo** | **55** | **0.806** | **31.2** | **0.880** | 0.281 | 63.8 | 0.543 |
+| PerBout-Top20 | 20 | 0.617 | 45.0 | 0.791 | 0.182 | 67.2 | 0.453 |
+| PerBout-Top20+Demo | 24 | 0.679 | 39.7 | 0.841 | **0.452** | **56.0** | **0.649** |
+| **Gait+CWT+WS+Demo** | **55** | **0.806** | **31.2** | **0.880** | 0.247 | 64.9 | 0.540 |
 
 Reproduce: `python analysis/reproduce_results_table_best_models.py` (~1 min)
 
@@ -159,7 +159,7 @@ Per-bout preprocessing: gravity removal → Rodrigues rotation → PCA yaw align
 ```bash
 python home/step3_predict.py               # <1 sec (cached features)
 # Input:  feats/home_perbout_features.csv + SwayDemographics.xlsx
-# Output: R²=0.454, MAE=55.5m, ρ=0.659 (Ridge only baseline)
+# Output: R²=0.452, MAE=56.0m, ρ=0.649 (Ridge only baseline)
 ```
 
 Spearman Top-20 inside LOO + Demo(4), Ridge α=20.
@@ -172,7 +172,7 @@ python home/step3_predict_all_models.py    # <30 sec (cached features)
 # Output: R², MAE, ρ for Ridge, Lasso, ElasticNet, KNN, SVR, RF, XGBoost + voting ensembles
 ```
 
-Comparison script only — Ridge(α=20) is used as the home model (R²=0.454). Vote ensemble (R²=0.478) gives only marginal improvement, not worth the added complexity.
+Comparison script only — Ridge(α=20) is used as the home model (R²=0.452). Vote ensemble (R²=0.478) gives only marginal improvement, not worth the added complexity.
 
 ### Home Gait/CWT/WalkSway Feature Extraction
 
@@ -292,8 +292,8 @@ All feature set combinations. Clinic=Ridge(α=5), Home=Ridge(α=20).
 | `home/step0_gt3x_to_npz.py` | GT3X → full recording NPZ (no filtering) |
 | `home/step1_detect_walking_bouts.py` | Walking bout detection + optional CSV saving |
 | `home/step2_extract_features.py` | Home PerBout feature extraction (153f) |
-| `home/step3_predict.py` | Home Ridge-only prediction (R²=0.454, baseline) |
-| `home/step3_predict_all_models.py` | Home all models comparison (Ridge best, R²=0.454) |
+| `home/step3_predict.py` | Home Ridge-only prediction (R²=0.452, baseline) |
+| `home/step3_predict_all_models.py` | Home all models comparison (Ridge best, R²=0.452) |
 | `home/extract_gait_cwt_ws_features.py` | Home Gait/CWT/WalkSway features (VM-based) |
 | `home/reproduce_from_bouts.py` | Reproduce from saved bout CSVs |
 | `clinic/predict.py` | Clinic Ridge prediction (R²=0.806) |
@@ -317,7 +317,7 @@ All feature set combinations. Clinic=Ridge(α=5), Home=Ridge(α=20).
 │   ├── step0_gt3x_to_npz.py         GT3X → NPZ
 │   ├── step1_detect_walking_bouts.py Bout detection [--save-csv]
 │   ├── step2_extract_features.py     PerBout features (153f)
-│   ├── step3_predict.py              Ridge baseline (R²=0.454)
+│   ├── step3_predict.py              Ridge baseline (R²=0.452)
 │   ├── step3_predict_all_models.py   All models comparison
 │   ├── extract_gait_cwt_ws_features.py Gait/CWT/WS features (VM)
 │   └── reproduce_from_bouts.py       Reproduce from bout CSVs
@@ -371,7 +371,7 @@ All feature set combinations. Clinic=Ridge(α=5), Home=Ridge(α=20).
 
 ### Models
 - **Clinic:** Ridge(α=5) is the best model. Non-linear models (RF, XGBoost, SVR, KNN) all worse.
-- **Home:** Ridge(α=20) is the best model. Vote ensemble (R²=0.478) offers only marginal gain over Ridge (R²=0.454), not worth the complexity.
+- **Home:** Ridge(α=20) is the best model. Vote ensemble (R²=0.478) offers only marginal gain over Ridge (R²=0.452), not worth the complexity.
 - **Fusion:** Early fusion (simple concatenation) beats late fusion, residual fusion, feature interactions, and modality-weighted fusion.
 
 ### Sampling Frequencies
@@ -380,9 +380,9 @@ All feature set combinations. Clinic=Ridge(α=5), Home=Ridge(α=20).
 - Sampling rate is in GT3X metadata (`info.txt` inside ZIP, field `Sample Rate`)
 
 ### Home Pipeline Design Decisions
-- **Full recording (no daytime filter):** R²=0.454 vs 0.365 with daytime only
-- **No quality filtering for PerBout:** keeping all bouts gives R²=0.454 vs 0.356 with quality filter
-- **Axis-based preprocessing for PerBout:** R²=0.454 vs 0.431 with VM-based
+- **Full recording (no daytime filter):** R²=0.452 vs 0.365 with daytime only
+- **No quality filtering for PerBout:** keeping all bouts gives R²=0.452 vs 0.356 with quality filter
+- **Axis-based preprocessing for PerBout:** R²=0.452 vs 0.431 with VM-based
 - **VM-based for Gait/CWT/WalkSway:** removes orientation artifacts in short free-living bouts
 - **Top-10 clean bouts ≥60s for Gait/CWT/WS:** longer bouts + quality filter needed for clinic-style features
 

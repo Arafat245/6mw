@@ -40,6 +40,7 @@ if __name__ == '__main__':
 
     # Load 153 accel features
     feat_df = pd.read_csv(FEATS_DIR / 'home_perbout_features.csv')
+    assert list(subj_df['key']) == list(feat_df['key']), "Key mismatch between _subjects.csv and features"
     accel_cols = [c for c in feat_df.columns if c != 'key']
     X_accel = impute(feat_df[accel_cols].values.astype(float))
     n_accel = X_accel.shape[1]

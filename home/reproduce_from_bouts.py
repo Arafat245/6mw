@@ -77,10 +77,10 @@ def extract_bout_features(xyz, fs=30.0):
         return None
     ap, ml, vt = apmlvt[:, 0], apmlvt[:, 1], apmlvt[:, 2]
     ap_bp, ml_bp, vt_bp = apmlvt_bp[:, 0], apmlvt_bp[:, 1], apmlvt_bp[:, 2]
-    nperseg = min(len(vt_bp), int(fs * 4))
+    nperseg = min(len(vt_bp), max(int(fs * 4), 256))
     if nperseg < int(fs): return None
-    freqs, Pxx = welch(vt_bp, fs=fs, nperseg=max(nperseg, 256), noverlap=nperseg // 2, detrend="constant")
-    band = (freqs >= 0.5) & (freqs <= 3.5)
+    freqs, Pxx = welch(vt_bp, fs=fs, nperseg=nperseg, noverlap=nperseg // 2, detrend="constant")
+    band = (freqs >= 0.5) & (freqs <= 2.5)
     if not np.any(band): return None
     cad = float(freqs[band][np.argmax(Pxx[band])])
     if cad < 1.0: return None
@@ -188,7 +188,7 @@ def extract_activity_features(xyz, fs):
         f['act_mid_enmo'] = np.mean(enmo_sec[third:2 * third])
         f['act_late_enmo'] = np.mean(enmo_sec[2 * third:])
         f['act_early_late_ratio'] = f['act_early_enmo'] / (f['act_late_enmo'] + 1e-12)
-    day_len = 15 * 3600
+    day_len = 24 * 3600
     n_days = max(1, n_secs // day_len)
     if n_days >= 2:
         daily_means = [np.mean(enmo_sec[d * day_len:(d + 1) * day_len])

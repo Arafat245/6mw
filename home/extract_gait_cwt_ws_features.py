@@ -8,7 +8,7 @@ Output: feats/home_gait_features.csv (66 features x 101 subjects)
         feats/home_cwt_features.csv (168 features x 101 subjects)
         feats/home_walksway_features.csv (72 features x 101 subjects)
 
-Run:  python temporary_experiments/extract_home_gait_cwt_ws_features.py
+Run:  python home/extract_gait_cwt_ws_features.py
 """
 import math, time, warnings, sys
 import numpy as np

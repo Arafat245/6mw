@@ -6,7 +6,7 @@ features per window, aggregate across windows.
 Input:  csv_raw2/*.csv
 Output: feats/clinic_perbout_features.csv (124 features x 101 subjects)
 
-Run:  python temporary_experiments/extract_clinic_perbout_features.py
+Run:  python clinic/extract_perbout_features.py
 """
 import math, time, warnings, sys
 import numpy as np

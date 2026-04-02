@@ -42,9 +42,14 @@ if __name__ == '__main__':
     n = len(subj_df)
 
     # Load cached clinic features
-    c_gait = pd.read_csv(FEATS_DIR / 'clinic_gait_features.csv').drop(columns='key').values.astype(float)
-    c_cwt = pd.read_csv(FEATS_DIR / 'clinic_cwt_features.csv').drop(columns='key').values.astype(float)
-    c_ws = pd.read_csv(FEATS_DIR / 'clinic_walksway_features.csv').drop(columns='key').values.astype(float)
+    c_gait_df = pd.read_csv(FEATS_DIR / 'clinic_gait_features.csv')
+    c_cwt_df = pd.read_csv(FEATS_DIR / 'clinic_cwt_features.csv')
+    c_ws_df = pd.read_csv(FEATS_DIR / 'clinic_walksway_features.csv')
+    for df_name, df in [('gait', c_gait_df), ('cwt', c_cwt_df), ('ws', c_ws_df)]:
+        assert list(subj_df['key']) == list(df['key']), f"Key mismatch in clinic_{df_name}_features.csv"
+    c_gait = c_gait_df.drop(columns='key').values.astype(float)
+    c_cwt = c_cwt_df.drop(columns='key').values.astype(float)
+    c_ws = c_ws_df.drop(columns='key').values.astype(float)
 
     # Demo(4): cohort_POMS, Age, Sex, Height
     demo = pd.read_excel(BASE / 'SwayDemographics.xlsx')
