@@ -154,6 +154,107 @@ python home/step2_extract_features.py      # ~12 min
 
 Per-bout preprocessing: gravity removal → Rodrigues rotation → PCA yaw alignment → AP, ML, VT + bandpass + ENMO. Extract 20 features per bout, aggregate with 6 stats (median, IQR, p10, p90, max, CV) = 120 gait + 4 meta + 29 activity = **153 features**.
 
+#### 20 Per-Bout Gait Features
+
+Each feature is extracted per walking bout, then aggregated across all bouts using 6 statistics (median, IQR, p10, p90, max, CV) → 20 × 6 = 120 columns.
+
+| # | Feature | Description |
+|---|---|---|
+| 1 | `cadence_hz` | Dominant walking cadence from VT power spectrum (0.5–2.5 Hz) |
+| 2 | `cadence_power` | Peak spectral power at cadence frequency |
+| 3 | `acf_step_reg` | Step regularity — autocorrelation of VT at step lag |
+| 4 | `hr_ap` | Harmonic ratio, anteroposterior axis |
+| 5 | `hr_vt` | Harmonic ratio, vertical axis |
+| 6 | `hr_ml` | Harmonic ratio, mediolateral axis |
+| 7 | `stride_time_mean` | Mean stride interval (seconds) |
+| 8 | `stride_time_std` | Stride interval standard deviation |
+| 9 | `stride_time_cv` | Stride interval coefficient of variation |
+| 10 | `ap_rms` | RMS acceleration, anteroposterior |
+| 11 | `ml_rms` | RMS acceleration, mediolateral |
+| 12 | `vt_rms` | RMS acceleration, vertical |
+| 13 | `enmo_mean` | Mean ENMO (Euclidean Norm Minus One) |
+| 14 | `enmo_p95` | 95th percentile ENMO |
+| 15 | `vm_std` | Standard deviation of dynamic vector magnitude |
+| 16 | `vt_range` | Range (peak-to-peak) of vertical acceleration |
+| 17 | `ml_range` | Range (peak-to-peak) of mediolateral acceleration |
+| 18 | `jerk_mean` | Mean jerk — rate of change of vector magnitude |
+| 19 | `signal_energy` | Mean squared dynamic vector magnitude |
+| 20 | `duration_sec` | Bout duration in seconds |
+
+#### 4 Meta Features
+
+| # | Feature | Description |
+|---|---|---|
+| 1 | `g_n_valid_bouts` | Total number of valid walking bouts |
+| 2 | `g_total_walk_sec` | Total walking duration across all bouts (seconds) |
+| 3 | `g_mean_bout_dur` | Mean bout duration (seconds) |
+| 4 | `g_bout_dur_cv` | Coefficient of variation of bout durations |
+
+#### 29 Activity Features (whole recording)
+
+Computed from second-by-second ENMO of the full multi-day recording (no bout segmentation).
+
+| # | Feature | Description |
+|---|---|---|
+| 1 | `act_enmo_mean` | Mean ENMO (1-sec epochs) |
+| 2 | `act_enmo_std` | Standard deviation of ENMO |
+| 3 | `act_enmo_median` | Median ENMO |
+| 4 | `act_enmo_p5` | 5th percentile ENMO |
+| 5 | `act_enmo_p25` | 25th percentile ENMO |
+| 6 | `act_enmo_p75` | 75th percentile ENMO |
+| 7 | `act_enmo_p95` | 95th percentile ENMO |
+| 8 | `act_enmo_iqr` | Interquartile range of ENMO |
+| 9 | `act_enmo_skew` | Skewness of ENMO distribution |
+| 10 | `act_enmo_kurtosis` | Kurtosis of ENMO distribution |
+| 11 | `act_enmo_entropy` | Entropy of ENMO histogram (20 bins) |
+| 12 | `act_pct_sedentary` | Fraction of time sedentary (ENMO < 0.02g) |
+| 13 | `act_pct_light` | Fraction of time in light activity (0.02–0.06g) |
+| 14 | `act_pct_moderate` | Fraction of time in moderate activity (0.06–0.1g) |
+| 15 | `act_pct_vigorous` | Fraction of time in vigorous activity (≥ 0.1g) |
+| 16 | `act_mvpa_min_per_hr` | MVPA minutes per hour (ENMO ≥ 0.06g) |
+| 17 | `act_n_bouts` | Number of active bouts (≥ 5s, ENMO ≥ 0.02g) |
+| 18 | `act_bouts_per_hr` | Active bouts per hour |
+| 19 | `act_bout_mean_dur` | Mean active bout duration (seconds) |
+| 20 | `act_bout_dur_cv` | CV of active bout durations |
+| 21 | `act_longest_bout` | Longest active bout duration (seconds) |
+| 22 | `act_astp` | Active-to-sedentary transition probability |
+| 23 | `act_satp` | Sedentary-to-active transition probability |
+| 24 | `act_fragmentation` | Fragmentation index (ASTP + SATP) |
+| 25 | `act_early_enmo` | Mean ENMO in first third of recording |
+| 26 | `act_mid_enmo` | Mean ENMO in middle third of recording |
+| 27 | `act_late_enmo` | Mean ENMO in last third of recording |
+| 28 | `act_early_late_ratio` | Ratio of early-to-late ENMO |
+| 29 | `act_daily_cv` | Day-to-day CV of mean ENMO |
+
+#### PerBout-Top20: Spearman-Selected Features
+
+The 20 accelerometer features selected by Spearman correlation inside each LOO fold. 15 features are selected in all 101 folds; the remaining 5 slots vary slightly across folds.
+
+| Feature | Folds Selected | |ρ| with 6MWD |
+|---|---|---|
+| `g_duration_sec_max` | 101/101 | 0.375 |
+| `act_pct_vigorous` | 101/101 | 0.370 |
+| `g_duration_sec_cv` | 101/101 | 0.367 |
+| `g_bout_dur_cv` | 101/101 | 0.367 |
+| `act_enmo_p95` | 101/101 | 0.366 |
+| `g_ap_rms_med` | 101/101 | 0.355 |
+| `g_enmo_mean_p10` | 101/101 | 0.350 |
+| `g_ap_rms_cv` | 101/101 | 0.347 |
+| `g_jerk_mean_med` | 101/101 | 0.345 |
+| `g_acf_step_reg_max` | 101/101 | 0.344 |
+| `g_ml_rms_cv` | 101/101 | 0.342 |
+| `g_vm_std_med` | 101/101 | 0.333 |
+| `g_vm_std_cv` | 101/101 | 0.333 |
+| `g_enmo_p95_med` | 101/101 | 0.330 |
+| `g_ml_range_med` | 101/101 | 0.328 |
+| `g_acf_step_reg_p90` | 100/101 | 0.337 |
+| `g_enmo_mean_med` | 100/101 | 0.326 |
+| `g_signal_energy_med` | 98/101 | 0.324 |
+| `g_ml_range_cv` | 82/101 | 0.325 |
+| `g_ml_rms_med` / `g_vt_range_med` | 45/101 | 0.319 |
+
+These 20 features + Demo(4) = 24 features → Ridge(α=20) → R²=0.452.
+
 ### Step 3: Home Prediction
 
 ```bash
