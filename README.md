@@ -230,28 +230,28 @@ Computed from second-by-second ENMO of the full multi-day recording (no bout seg
 
 The 20 accelerometer features selected by Spearman correlation inside each LOO fold. 15 features are selected in all 101 folds; the remaining 5 slots vary slightly across folds.
 
-| Feature | Folds Selected | |ρ| with 6MWD |
-|---|---|---|
-| `g_duration_sec_max` | 101/101 | 0.375 |
-| `act_pct_vigorous` | 101/101 | 0.370 |
-| `g_duration_sec_cv` | 101/101 | 0.367 |
-| `g_bout_dur_cv` | 101/101 | 0.367 |
-| `act_enmo_p95` | 101/101 | 0.366 |
-| `g_ap_rms_med` | 101/101 | 0.355 |
-| `g_enmo_mean_p10` | 101/101 | 0.350 |
-| `g_ap_rms_cv` | 101/101 | 0.347 |
-| `g_jerk_mean_med` | 101/101 | 0.345 |
-| `g_acf_step_reg_max` | 101/101 | 0.344 |
-| `g_ml_rms_cv` | 101/101 | 0.342 |
-| `g_vm_std_med` | 101/101 | 0.333 |
-| `g_vm_std_cv` | 101/101 | 0.333 |
-| `g_enmo_p95_med` | 101/101 | 0.330 |
-| `g_ml_range_med` | 101/101 | 0.328 |
-| `g_acf_step_reg_p90` | 100/101 | 0.337 |
-| `g_enmo_mean_med` | 100/101 | 0.326 |
-| `g_signal_energy_med` | 98/101 | 0.324 |
-| `g_ml_range_cv` | 82/101 | 0.325 |
-| `g_ml_rms_med` / `g_vt_range_med` | 45/101 | 0.319 |
+| # | Feature | Folds Selected | Spearman ρ |
+|---|---|---|---|
+| 1 | `g_duration_sec_max` | 101/101 | 0.375 |
+| 2 | `act_pct_vigorous` | 101/101 | 0.370 |
+| 3 | `g_duration_sec_cv` | 101/101 | 0.367 |
+| 4 | `g_bout_dur_cv` | 101/101 | 0.367 |
+| 5 | `act_enmo_p95` | 101/101 | 0.366 |
+| 6 | `g_ap_rms_med` | 101/101 | 0.355 |
+| 7 | `g_enmo_mean_p10` | 101/101 | 0.350 |
+| 8 | `g_ap_rms_cv` | 101/101 | 0.347 |
+| 9 | `g_jerk_mean_med` | 101/101 | 0.345 |
+| 10 | `g_acf_step_reg_max` | 101/101 | 0.344 |
+| 11 | `g_ml_rms_cv` | 101/101 | 0.342 |
+| 12 | `g_vm_std_med` | 101/101 | 0.333 |
+| 13 | `g_vm_std_cv` | 101/101 | 0.333 |
+| 14 | `g_enmo_p95_med` | 101/101 | 0.330 |
+| 15 | `g_ml_range_med` | 101/101 | 0.328 |
+| 16 | `g_acf_step_reg_p90` | 100/101 | 0.337 |
+| 17 | `g_enmo_mean_med` | 100/101 | 0.326 |
+| 18 | `g_signal_energy_med` | 98/101 | 0.324 |
+| 19 | `g_ml_range_cv` | 82/101 | 0.325 |
+| 20 | `g_ml_rms_med` / `g_vt_range_med` | 45/101 | 0.319 |
 
 These 20 features + Demo(4) = 24 features → Ridge(α=20) → R²=0.452.
 
