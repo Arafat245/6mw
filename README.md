@@ -6,19 +6,19 @@ Predicting 6MWD from hip-worn accelerometer data collected during clinic 6-minut
 
 ## Results Table
 
-| Feature Set | #f | Clinic R² | Clinic MAE (m) | Clinic ρ | Home R² | Home MAE (m) | Home ρ |
+| Feature Set | #f | Clinic R² | Clinic MAE (m) | Clinic r | Home R² | Home MAE (m) | Home r |
 |---|---|---|---|---|---|---|---|
-| Gait | 11 | 0.682 | 42.7 | 0.801 | 0.145 | 70.1 | 0.377 |
-| CWT | 28 | 0.357 | 60.2 | 0.601 | 0.150 | 67.9 | 0.462 |
-| WalkSway | 12 | 0.403 | 54.2 | 0.715 | 0.056 | 73.3 | 0.313 |
-| Demo | 4 | 0.362 | 60.8 | 0.595 | 0.362 | 60.8 | 0.595 |
-| PerBout-Top20 | 20 | 0.617 | 45.0 | 0.791 | 0.182 | 67.2 | 0.453 |
-| PerBout-Top20+Demo | 24 | 0.679 | 39.7 | 0.841 | **0.452** | **56.0** | **0.649** |
-| **Gait+CWT+WS+Demo** | **55** | **0.806** | **31.2** | **0.880** | 0.281 | 63.8 | 0.543 |
+| Gait | 11 | 0.68 | 42.7 | 0.83 | 0.15 | 70.1 | 0.41 |
+| CWT | 28 | 0.36 | 60.2 | 0.60 | 0.15 | 67.9 | 0.40 |
+| WalkSway | 12 | 0.40 | 54.2 | 0.63 | 0.06 | 73.3 | 0.29 |
+| Demo | 4 | 0.36 | 60.8 | 0.60 | 0.36 | 60.8 | 0.60 |
+| PerBout-Top20 | 20 | 0.62 | 45.0 | 0.79 | 0.18 | 67.2 | 0.43 |
+| PerBout-Top20+Demo | 24 | 0.68 | 39.7 | 0.82 | **0.45** | **56.0** | **0.67** |
+| **Gait+CWT+WS+Demo** | **55** | **0.81** | **31.2** | **0.90** | 0.28 | 63.8 | 0.54 |
 
 Reproduce: `python analysis/reproduce_results_table_best_models.py` (~1 min)
 
-- **n=101**, LOO CV, no data leakage. All metrics in meters.
+- **n=101**, LOO CV, no data leakage. All metrics in meters. Correlation column is Pearson **r** between predicted and true 6MWD (Spearman ρ available from scripts; ρ used only for feature selection inside folds).
 - **Both clinic and home use Ridge regression.** Clinic α=5, Home α=20.
 - **Demo-only row:** cohort_POMS, Age, Sex, BMI — same for clinic and home, Ridge α=20
 - **Demo in combos:** Clinic uses Height, Home uses BMI (different best Demo per setting)
@@ -101,7 +101,7 @@ python clinic/extract_perbout_features.py    # ~1 min
 python clinic/predict.py               # <1 sec (cached features)
 # Input:  feats/clinic_gait_features.csv + clinic_cwt_features.csv
 #         + clinic_walksway_features.csv + SwayDemographics.xlsx
-# Output: R²=0.806, MAE=31.2m, ρ=0.880
+# Output: R²=0.806, MAE=31.2m, r=0.898
 ```
 
 Gait(11) + CWT(28) + WalkSway(12) + Demo(Height, 4) = 55 features, no feature selection, Ridge α=5.
@@ -111,7 +111,7 @@ Gait(11) + CWT(28) + WalkSway(12) + Demo(Height, 4) = 55 features, no feature se
 ```bash
 python clinic/predict_all_models.py    # <1 min
 # Input:  feats/clinic_{gait,cwt,walksway}_features.csv + SwayDemographics.xlsx
-# Output: R², MAE, ρ for Ridge, Lasso, ElasticNet, KNN, SVR, RF, XGBoost
+# Output: R², MAE, r for Ridge, Lasso, ElasticNet, KNN, SVR, RF, XGBoost
 ```
 
 ---
@@ -260,7 +260,7 @@ These 20 features + Demo(4) = 24 features → Ridge(α=20) → R²=0.452.
 ```bash
 python home/step3_predict.py               # <1 sec (cached features)
 # Input:  feats/home_perbout_features.csv + SwayDemographics.xlsx
-# Output: R²=0.452, MAE=56.0m, ρ=0.649 (Ridge only baseline)
+# Output: R²=0.452, MAE=56.0m, r=0.672 (Ridge only baseline)
 ```
 
 Spearman Top-20 inside LOO + Demo(4), Ridge α=20.
@@ -270,7 +270,7 @@ Spearman Top-20 inside LOO + Demo(4), Ridge α=20.
 ```bash
 python home/step3_predict_all_models.py    # <30 sec (cached features)
 # Input:  feats/home_perbout_features.csv + SwayDemographics.xlsx
-# Output: R², MAE, ρ for Ridge, Lasso, ElasticNet, KNN, SVR, RF, XGBoost + voting ensembles
+# Output: R², MAE, r for Ridge, Lasso, ElasticNet, KNN, SVR, RF, XGBoost + voting ensembles
 ```
 
 Comparison script only — Ridge(α=20) is used as the home model (R²=0.452). Vote ensemble (R²=0.478) gives only marginal improvement, not worth the added complexity.

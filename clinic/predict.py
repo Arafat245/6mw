@@ -7,7 +7,7 @@ Input:  feats/clinic_gait_features.csv
         feats/clinic_walksway_features.csv
         SwayDemographics.xlsx
         home_full_recording_npz/_subjects.csv
-Output: Prints R², MAE, ρ → R²=0.806
+Output: Prints R², MAE, Pearson r (Spearman ρ also shown) → R²=0.806
 
 Run:  python clinic/predict.py
 """

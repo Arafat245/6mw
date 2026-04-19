@@ -16,7 +16,7 @@ import warnings, time
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from scipy.stats import spearmanr
+from scipy.stats import spearmanr, pearsonr
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import LeaveOneOut
 from sklearn.metrics import r2_score, mean_absolute_error
@@ -44,7 +44,7 @@ def loo_ridge(X, y, alpha):
         sc = StandardScaler(); m = Ridge(alpha=alpha)
         m.fit(sc.fit_transform(X[tr]), y[tr])
         pr[te] = m.predict(sc.transform(X[te]))
-    return r2_score(y, pr), mean_absolute_error(y * FT2M, pr * FT2M), spearmanr(y, pr)[0]
+    return r2_score(y, pr), mean_absolute_error(y * FT2M, pr * FT2M), pearsonr(y, pr)[0]
 
 
 def loo_spearman_ridge(X_accel, X_demo, y, K=20, alpha=20):
@@ -66,7 +66,7 @@ def loo_spearman_ridge(X_accel, X_demo, y, K=20, alpha=20):
         sc = StandardScaler(); m = Ridge(alpha=alpha)
         m.fit(sc.fit_transform(X_tr), y[tr])
         pr[i] = m.predict(sc.transform(X_te))[0]
-    return r2_score(y, pr), mean_absolute_error(y * FT2M, pr * FT2M), spearmanr(y, pr)[0]
+    return r2_score(y, pr), mean_absolute_error(y * FT2M, pr * FT2M), pearsonr(y, pr)[0]
 
 
 if __name__ == '__main__':
@@ -105,61 +105,61 @@ if __name__ == '__main__':
     rows = []
 
     # ── Row 1: Gait ──
-    cr2, cmae, crho = loo_ridge(c_gait, y, alpha=5)
-    hr2, hmae, hrho = loo_spearman_ridge(h_gait, None, y, K=11, alpha=5)
+    cr2, cmae, cr_p =loo_ridge(c_gait, y, alpha=5)
+    hr2, hmae, hr_p =loo_spearman_ridge(h_gait, None, y, K=11, alpha=5)
     rows.append({'Feature Set': 'Gait', '#f': 11,
-                 'Clinic R²': round(cr2, 3), 'Clinic MAE (m)': round(cmae, 1), 'Clinic ρ': round(crho, 3),
-                 'Home R²': round(hr2, 3), 'Home MAE (m)': round(hmae, 1), 'Home ρ': round(hrho, 3)})
+                 'Clinic R²': round(cr2, 2), 'Clinic MAE (m)': round(cmae, 1), 'Clinic r': round(cr_p, 2),
+                 'Home R²': round(hr2, 2), 'Home MAE (m)': round(hmae, 1), 'Home r': round(hr_p, 2)})
     print(f'  Gait:              C R²={cr2:.3f}  H R²={hr2:.3f}')
 
     # ── Row 2: CWT ──
-    cr2, cmae, crho = loo_ridge(c_cwt, y, alpha=20)
-    hr2, hmae, hrho = loo_spearman_ridge(h_cwt, None, y, K=11, alpha=20)
+    cr2, cmae, cr_p =loo_ridge(c_cwt, y, alpha=20)
+    hr2, hmae, hr_p =loo_spearman_ridge(h_cwt, None, y, K=11, alpha=20)
     rows.append({'Feature Set': 'CWT', '#f': 28,
-                 'Clinic R²': round(cr2, 3), 'Clinic MAE (m)': round(cmae, 1), 'Clinic ρ': round(crho, 3),
-                 'Home R²': round(hr2, 3), 'Home MAE (m)': round(hmae, 1), 'Home ρ': round(hrho, 3)})
+                 'Clinic R²': round(cr2, 2), 'Clinic MAE (m)': round(cmae, 1), 'Clinic r': round(cr_p, 2),
+                 'Home R²': round(hr2, 2), 'Home MAE (m)': round(hmae, 1), 'Home r': round(hr_p, 2)})
     print(f'  CWT:               C R²={cr2:.3f}  H R²={hr2:.3f}')
 
     # ── Row 3: WalkSway ──
-    cr2, cmae, crho = loo_ridge(c_ws, y, alpha=5)
-    hr2, hmae, hrho = loo_spearman_ridge(h_ws, None, y, K=11, alpha=5)
+    cr2, cmae, cr_p =loo_ridge(c_ws, y, alpha=5)
+    hr2, hmae, hr_p =loo_spearman_ridge(h_ws, None, y, K=11, alpha=5)
     rows.append({'Feature Set': 'WalkSway', '#f': 12,
-                 'Clinic R²': round(cr2, 3), 'Clinic MAE (m)': round(cmae, 1), 'Clinic ρ': round(crho, 3),
-                 'Home R²': round(hr2, 3), 'Home MAE (m)': round(hmae, 1), 'Home ρ': round(hrho, 3)})
+                 'Clinic R²': round(cr2, 2), 'Clinic MAE (m)': round(cmae, 1), 'Clinic r': round(cr_p, 2),
+                 'Home R²': round(hr2, 2), 'Home MAE (m)': round(hmae, 1), 'Home r': round(hr_p, 2)})
     print(f'  WalkSway:          C R²={cr2:.3f}  H R²={hr2:.3f}')
 
     # ── Row 4: Demo ──
-    cr2, cmae, crho = loo_ridge(X_demo_bmi, y, alpha=20)
-    hr2, hmae, hrho = cr2, cmae, crho  # identical
+    cr2, cmae, cr_p =loo_ridge(X_demo_bmi, y, alpha=20)
+    hr2, hmae, hr_p = cr2, cmae, cr_p  # identical
     rows.append({'Feature Set': 'Demo', '#f': 4,
-                 'Clinic R²': round(cr2, 3), 'Clinic MAE (m)': round(cmae, 1), 'Clinic ρ': round(crho, 3),
-                 'Home R²': round(hr2, 3), 'Home MAE (m)': round(hmae, 1), 'Home ρ': round(hrho, 3)})
+                 'Clinic R²': round(cr2, 2), 'Clinic MAE (m)': round(cmae, 1), 'Clinic r': round(cr_p, 2),
+                 'Home R²': round(hr2, 2), 'Home MAE (m)': round(hmae, 1), 'Home r': round(hr_p, 2)})
     print(f'  Demo:              C R²={cr2:.3f}  H R²={hr2:.3f}')
 
     # ── Row 5: PerBout-Top20 ──
-    cr2, cmae, crho = loo_spearman_ridge(c_pb, None, y, K=20, alpha=5)
-    hr2, hmae, hrho = loo_spearman_ridge(h_pb, None, y, K=20, alpha=20)
+    cr2, cmae, cr_p =loo_spearman_ridge(c_pb, None, y, K=20, alpha=5)
+    hr2, hmae, hr_p =loo_spearman_ridge(h_pb, None, y, K=20, alpha=20)
     rows.append({'Feature Set': 'PerBout-Top20', '#f': 20,
-                 'Clinic R²': round(cr2, 3), 'Clinic MAE (m)': round(cmae, 1), 'Clinic ρ': round(crho, 3),
-                 'Home R²': round(hr2, 3), 'Home MAE (m)': round(hmae, 1), 'Home ρ': round(hrho, 3)})
+                 'Clinic R²': round(cr2, 2), 'Clinic MAE (m)': round(cmae, 1), 'Clinic r': round(cr_p, 2),
+                 'Home R²': round(hr2, 2), 'Home MAE (m)': round(hmae, 1), 'Home r': round(hr_p, 2)})
     print(f'  PerBout-Top20:     C R²={cr2:.3f}  H R²={hr2:.3f}')
 
     # ── Row 6: PerBout-Top20+Demo ──
-    cr2, cmae, crho = loo_spearman_ridge(c_pb, X_demo_bmi, y, K=20, alpha=20)
-    hr2, hmae, hrho = loo_spearman_ridge(h_pb, X_demo_bmi, y, K=20, alpha=20)
+    cr2, cmae, cr_p =loo_spearman_ridge(c_pb, X_demo_bmi, y, K=20, alpha=20)
+    hr2, hmae, hr_p =loo_spearman_ridge(h_pb, X_demo_bmi, y, K=20, alpha=20)
     rows.append({'Feature Set': 'PerBout-Top20+Demo', '#f': 24,
-                 'Clinic R²': round(cr2, 3), 'Clinic MAE (m)': round(cmae, 1), 'Clinic ρ': round(crho, 3),
-                 'Home R²': round(hr2, 3), 'Home MAE (m)': round(hmae, 1), 'Home ρ': round(hrho, 3)})
+                 'Clinic R²': round(cr2, 2), 'Clinic MAE (m)': round(cmae, 1), 'Clinic r': round(cr_p, 2),
+                 'Home R²': round(hr2, 2), 'Home MAE (m)': round(hmae, 1), 'Home r': round(hr_p, 2)})
     print(f'  PerBout-Top20+Demo: C R²={cr2:.3f}  H R²={hr2:.3f}')
 
     # ── Row 7: Gait+CWT+WS+Demo ──
     X_clinic_all = np.column_stack([c_gait, c_cwt, c_ws, X_demo_height])
-    cr2, cmae, crho = loo_ridge(X_clinic_all, y, alpha=5)
+    cr2, cmae, cr_p =loo_ridge(X_clinic_all, y, alpha=5)
     X_home_gcw = np.column_stack([h_gait, h_cwt, h_ws])
-    hr2, hmae, hrho = loo_spearman_ridge(X_home_gcw, X_demo_bmi, y, K=20, alpha=20)
+    hr2, hmae, hr_p =loo_spearman_ridge(X_home_gcw, X_demo_bmi, y, K=20, alpha=20)
     rows.append({'Feature Set': 'Gait+CWT+WS+Demo', '#f': 55,
-                 'Clinic R²': round(cr2, 3), 'Clinic MAE (m)': round(cmae, 1), 'Clinic ρ': round(crho, 3),
-                 'Home R²': round(hr2, 3), 'Home MAE (m)': round(hmae, 1), 'Home ρ': round(hrho, 3)})
+                 'Clinic R²': round(cr2, 2), 'Clinic MAE (m)': round(cmae, 1), 'Clinic r': round(cr_p, 2),
+                 'Home R²': round(hr2, 2), 'Home MAE (m)': round(hmae, 1), 'Home r': round(hr_p, 2)})
     print(f'  Gait+CWT+WS+Demo: C R²={cr2:.3f}  H R²={hr2:.3f}')
 
     # Save

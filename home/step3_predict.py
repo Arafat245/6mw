@@ -4,7 +4,7 @@ Step 3: LOO CV prediction with Spearman Top-20 + Demo(4), Ridge alpha=20.
 
 Input:  feats/home_perbout_features.csv + SwayDemographics.xlsx
         home_full_recording_npz/_subjects.csv
-Output: Prints R², MAE, ρ
+Output: Prints R², MAE, Pearson r (Spearman ρ also shown for reference)
 
 Run:  python home/step3_predict.py
 """
