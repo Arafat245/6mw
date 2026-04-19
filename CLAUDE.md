@@ -44,10 +44,10 @@ Predicting 6-Minute Walk Distance (6MWD) from hip-worn accelerometer data in Ped
 
 ## Current Best Results
 
-| Setting | Features | Model | R² | MAE (m) | ρ |
+| Setting | Features | Model | R² | MAE (m) | r |
 |---|---|---|---|---|---|
-| Clinic | Gait+CWT+WalkSway+Demo (55f) | Ridge(α=5) | 0.806 | 31.2 | 0.880 |
-| Home (clinic-free) | PerBout-Top20+Demo(4) (24f, Spearman inside LOO) | Ridge(α=20) | 0.452 | 56.0 | 0.649 |
+| Clinic | Gait+CWT+WalkSway+Demo (55f) | Ridge(α=5) | 0.806 | 31.2 | 0.898 |
+| Home (clinic-free) | Bout+Act-Top20+Demo(4) (24f, Spearman inside LOO) | Ridge(α=20) | 0.452 | 56.0 | 0.672 |
 
 ## Home Pipeline (step0 → step3)
 
@@ -90,15 +90,15 @@ Full results table: `python analysis/results_table_final.py` (clinic + home)
 
 ## Experiment History
 
-- **Clinic per-bout (60s windows):** PerBout-Top20+Demo(4) R²=0.679 — use 60s windows, not 30s
+- **Clinic per-bout (60s windows):** Bout+Act-Top20+Demo(4) R²=0.69 (after adding 29 activity features from full 6MWT to clinic feature pool, 2026-04-19; was R²=0.679 with 123-feature gait+meta-only pool). Use 60s windows, not 30s.
 - **Home daytime only:** R²=0.365 — worse than full recording
 - **Home worn-time filter only:** R²=0.407 — worse than no filter
 - **Resampling non-30Hz to 30Hz:** resample_poly R²=0.342, linear interp R²=0.373 — both worse
 - **Walking bout verification:** R²=0.423 — worse than keeping all bouts
 - **Circadian/temporal features (IS, IV, L5/M10, cosinor, bout timing):** 18 new features from clock-time analysis of full recordings. Too weakly correlated with 6MWD — Spearman never selects them over gait features. Standalone R²=0.337.
-- **MRMR selection (inside LOO):** R²=0.423 on PerBout, R²=0.431 on PerBout+Goldman — worse than Spearman Top-20 (0.452). Reducing redundancy hurts.
+- **MRMR selection (inside LOO):** R²=0.423 on Bout+Act, R²=0.431 on Bout+Act+Goldman — worse than Spearman Top-20 (0.452). Reducing redundancy hurts.
 - **Goldman PAM features (MSR, HWSR, daily steps):** Only 92/101 subjects have data. With imputation, Spearman-20 R²=0.387, MRMR-20 R²=0.431 — both worse.
-- **Combined pools (PerBout+Circadian+Goldman):** Spearman-20 R²=0.387, MRMR-20 R²=0.401 — adding features beyond PerBout hurts or doesn't help.
+- **Combined pools (Bout+Act+Circadian+Goldman):** Spearman-20 R²=0.387, MRMR-20 R²=0.401 — adding features beyond Bout+Act hurts or doesn't help.
 - **Forward selection (outside LOO):** Previously reported R²=0.555 — inflated by selection leakage (feature selection not inside LOO folds). Not valid.
 - **Kernel Ridge Regression (RBF):** All negative R² — severely overfits at n=101. Even with inner 5-fold CV: R²=0.06.
 - **SVR (RBF):** Best individual R²=0.428 (C=1000, γ=0.01) — close but worse than Ridge.
@@ -106,15 +106,15 @@ Full results table: `python analysis/results_table_final.py` (clinic + home)
 - **Ridge+SVR blending:** 0.5*Ridge(α=20) + 0.5*SVR(rbf, C=500, γ=0.05) on same Spearman-20 + Demo(4): R²=0.472, MAE=53.8m, ρ=0.691. Modest improvement over R²=0.452 baseline.
 - **Vote(Ridge+Lasso+SVR):** Best ensemble for home. R²=0.478, MAE=53.6m, ρ=0.674. Only +0.024 over Ridge (0.452) — not worth the complexity, so Ridge is used as the final model.
 - **Stacking regressor (inner 5-fold CV, Ridge meta):** All combos worse than voting at n=101 — inner CV meta-features are too noisy.
-- **Pearson selection (inside LOO):** R²=0.416 Ridge, R²=0.429 blend — worse than Spearman (0.452/0.472). Spearman captures monotonic relationships better.
+- **Pearson selection (inside LOO) — both settings:** Re-ran with current feature set (152f home, 123f clinic, after `g_n_valid_bouts` removal) and Pearson Top-20 + Demo, Ridge same α. **Home:** Pearson R²=0.406, MAE=59.4m, r=0.638 vs Spearman baseline R²=0.452, MAE=56.0m, r=0.672 (ΔR²=−0.046). **Clinic:** Pearson R²=0.570, MAE=41.5m, r=0.763 vs Spearman R²=0.663, MAE=40.3m, r=0.818 (ΔR²=−0.093). Mean selection overlap: 14.7/20 home, 19.0/20 clinic — clinic differs by only 1 feature yet costs 9 R² points, suggesting Pearson preferentially picks one strongly-linear feature over a more informative monotonic one. Earlier session entry (R²=0.416 Ridge, 0.429 blend) used a slightly different feature set; conclusion is consistent. Note: reporting Pearson r as the predicted-vs-actual *metric* is independent from selection method — Ridge produces linear outputs (so r is the right metric), but features benefit from monotonic-rank selection because gait↔6MWD relationships saturate (e.g., max bout duration plateaus, ENMO percentiles non-linear). Keep Spearman selection as the canonical pipeline.
 - **Clinic non-linear models:** KNN R²=0.460, RF R²=0.652, XGBoost R²=0.663, SVR R²=0.642 — all worse than Ridge R²=0.806. Voting/stacking also worse for clinic.
-- **Late fusion (separate Demo + PerBout models):** Best R²=0.385 (0.7*Demo+0.3*PB) — worse than early fusion (0.452). Loses cross-modal information.
-- **Residual fusion (Demo→residuals→PerBout):** R²=0.363 — worse. Two-stage approach loses information vs joint model.
-- **Residual-guided feature selection:** Select PerBout by correlation with Demo residuals, then early fuse. R²=0.388 — worse than standard Spearman selection (0.452).
-- **Feature interactions (PerBout×Demo cross-terms):** 80 interaction features + Ridge α=100: R²=0.387. Overfits at n=101.
+- **Late fusion (separate Demo + Bout+Act models):** Best R²=0.385 (0.7*Demo+0.3*B+A) — worse than early fusion (0.452). Loses cross-modal information.
+- **Residual fusion (Demo→residuals→Bout+Act):** R²=0.363 — worse. Two-stage approach loses information vs joint model.
+- **Residual-guided feature selection:** Select Bout+Act by correlation with Demo residuals, then early fuse. R²=0.388 — worse than standard Spearman selection (0.452).
+- **Feature interactions (Bout+Act×Demo cross-terms):** 80 interaction features + Ridge α=100: R²=0.387. Overfits at n=101.
 - **Modality-weighted fusion (inner CV for weight):** R²=0.424 — worse than unweighted concatenation.
 - **Gaussian Process Regression:** Pure non-linear kernels (RBF R²=0.09, Matern R²=0.20) overfit badly. DotProduct+RBF R²=0.450 ≈ Ridge (essentially linear). No improvement over Ridge.
-- **Transfer learning from external 6MWT dataset (Nature Sci Data 2025, 60 healthy adults):** Trained Ridge on per-path gait features→6MWD from 60 subjects' controlled 6MWT (lower-back IMU, 100Hz→30Hz). Applied to home bouts as "virtual clinic assessment." Transfer-only+Demo R²=0.323, transfer median+Demo R²=0.356. Pooled with PerBout features: R²=0.453 (+0.001) — negligible. Domain gap too large (controlled vs free-living, healthy vs POMS).
+- **Transfer learning from external 6MWT dataset (Nature Sci Data 2025, 60 healthy adults):** Trained Ridge on per-path gait features→6MWD from 60 subjects' controlled 6MWT (lower-back IMU, 100Hz→30Hz). Applied to home bouts as "virtual clinic assessment." Transfer-only+Demo R²=0.323, transfer median+Demo R²=0.356. Pooled with Bout+Act features: R²=0.453 (+0.001) — negligible. Domain gap too large (controlled vs free-living, healthy vs POMS).
 - **LLM few-shot prediction (Claude Haiku):** 100 training subjects as in-context examples with 8 gait features + demographics, predict held-out 6MWD. R²=0.341, MAE=62.4m, ρ=0.602. Ensembling 0.3*LLM+0.7*Ridge: R²=0.441 — worse than Ridge alone. LLMs can't match Ridge's numeric precision.
 - **RAG-inspired patient similarity (k-NN + Ridge blend):** Inverse-distance-weighted k-NN in standardized feature space, blended with Ridge. All configs (k=3/5/7/10, α=0.5–0.8) worse than pure Ridge. k-NN adds noise at n=101.
 - **Bout-weighted aggregation (type-7 weighted quantile across 6 stats):** Pre-registered primary = `sqrt(duration_sec) * max(0,acf_step_reg) / (1+stride_time_cv)`, plus 6 exploratory weight schemes (sqrt(dur), dur, sqrt(cadence_power), acf alone, sqrt(dur)×acf, primary with p95-replaces-max). Uniform W0 reproduces baseline exactly (R²=0.4516). All 7 weighted variants worse by 0.05–0.13 R² — primary R²=0.329. Weighting bouts by length/rhythm/stability systematically downweights short/noisy bouts that carry the between-subject capacity signal, erasing the variance Ridge relies on.

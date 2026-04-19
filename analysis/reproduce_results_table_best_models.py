@@ -136,21 +136,21 @@ if __name__ == '__main__':
                  'Home R²': round(hr2, 2), 'Home MAE (m)': round(hmae, 1), 'Home r': round(hr_p, 2)})
     print(f'  Demo:              C R²={cr2:.3f}  H R²={hr2:.3f}')
 
-    # ── Row 5: PerBout-Top20 ──
+    # ── Row 5: Bout+Act-Top20 ──
     cr2, cmae, cr_p =loo_spearman_ridge(c_pb, None, y, K=20, alpha=5)
     hr2, hmae, hr_p =loo_spearman_ridge(h_pb, None, y, K=20, alpha=20)
-    rows.append({'Feature Set': 'PerBout-Top20', '#f': 20,
+    rows.append({'Feature Set': 'Bout+Act-Top20', '#f': 20,
                  'Clinic R²': round(cr2, 2), 'Clinic MAE (m)': round(cmae, 1), 'Clinic r': round(cr_p, 2),
                  'Home R²': round(hr2, 2), 'Home MAE (m)': round(hmae, 1), 'Home r': round(hr_p, 2)})
-    print(f'  PerBout-Top20:     C R²={cr2:.3f}  H R²={hr2:.3f}')
+    print(f'  Bout+Act-Top20:     C R²={cr2:.3f}  H R²={hr2:.3f}')
 
-    # ── Row 6: PerBout-Top20+Demo ──
+    # ── Row 6: Bout+Act-Top20+Demo ──
     cr2, cmae, cr_p =loo_spearman_ridge(c_pb, X_demo_bmi, y, K=20, alpha=20)
     hr2, hmae, hr_p =loo_spearman_ridge(h_pb, X_demo_bmi, y, K=20, alpha=20)
-    rows.append({'Feature Set': 'PerBout-Top20+Demo', '#f': 24,
+    rows.append({'Feature Set': 'Bout+Act-Top20+Demo', '#f': 24,
                  'Clinic R²': round(cr2, 2), 'Clinic MAE (m)': round(cmae, 1), 'Clinic r': round(cr_p, 2),
                  'Home R²': round(hr2, 2), 'Home MAE (m)': round(hmae, 1), 'Home r': round(hr_p, 2)})
-    print(f'  PerBout-Top20+Demo: C R²={cr2:.3f}  H R²={hr2:.3f}')
+    print(f'  Bout+Act-Top20+Demo: C R²={cr2:.3f}  H R²={hr2:.3f}')
 
     # ── Row 7: Gait+CWT+WS+Demo ──
     X_clinic_all = np.column_stack([c_gait, c_cwt, c_ws, X_demo_height])

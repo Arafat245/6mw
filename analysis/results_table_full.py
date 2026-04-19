@@ -7,7 +7,7 @@ Table 1: No feature selection on Gait/CWT/WS (appended as-is to fixed blocks)
 Table 2: Spearman Top-20 on Gait/CWT/WS (selection inside LOO)
 
 Fixed blocks (no selection applied):
-  - PerBout-Top20: Spearman Top-20 inside LOO from 153/124 accel features
+  - Bout+Act-Top20: Spearman Top-20 inside LOO from 153/124 accel features
   - Demo: 4 features (cohort_POMS, Age, Sex, Height for clinic / BMI for home)
   - Demo-only row: uses BMI for both clinic and home
 
@@ -80,7 +80,7 @@ def loo_combined(X_parts_fixed, X_parts_select, y, K_select=20, alpha=20):
             parts_tr.append(X_part[tr])
             parts_te.append(X_part[i:i + 1])
 
-        # PerBout-Top20 (own selection per fold)
+        # Bout+Act-Top20 (own selection per fold)
         if pb_info is not None:
             n_pb = pb_info.shape[1]
             corrs = [abs(spearmanr(pb_info[tr, j], y[tr])[0])
@@ -141,7 +141,7 @@ def run_table(table_name, use_selection, sel_sets_c, sel_sets_h, sel_names,
 
                 label_parts = list(sel_combo)
                 if use_pb:
-                    label_parts.append('PerBout-Top20')
+                    label_parts.append('Bout+Act-Top20')
                 if use_demo:
                     label_parts.append('Demo')
                 label = '+'.join(label_parts)
@@ -232,7 +232,7 @@ if __name__ == '__main__':
     sel_names = ['Gait', 'CWT', 'WalkSway']
 
     print(f'n={n}, LOO CV, Clinic=Ridge(α={C_ALPHA}), Home=Ridge(α={H_ALPHA})')
-    print(f'PerBout-Top20: Spearman inside LOO (fixed block)')
+    print(f'Bout+Act-Top20: Spearman inside LOO (fixed block)')
     print(f'Demo-only row: cohort_POMS, Age, Sex, BMI (same for both)')
     print(f'Demo in combos: Clinic=Height, Home=BMI')
 

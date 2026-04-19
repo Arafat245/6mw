@@ -12,9 +12,11 @@ Predicting 6MWD from hip-worn accelerometer data collected during clinic 6-minut
 | CWT | 28 | 0.36 | 60.2 | 0.60 | 0.15 | 67.9 | 0.40 |
 | WalkSway | 12 | 0.40 | 54.2 | 0.63 | 0.06 | 73.3 | 0.29 |
 | Demo | 4 | 0.36 | 60.8 | 0.60 | 0.36 | 60.8 | 0.60 |
-| PerBout-Top20 | 20 | 0.62 | 45.0 | 0.79 | 0.18 | 67.2 | 0.43 |
-| PerBout-Top20+Demo | 24 | 0.68 | 39.7 | 0.82 | **0.45** | **56.0** | **0.67** |
+| Bout+Act-Top20 | 20 | 0.63 | 44.3 | 0.79 | 0.18 | 67.2 | 0.43 |
+| Bout+Act-Top20+Demo | 24 | 0.69 | 39.6 | 0.83 | **0.45** | **56.0** | **0.67** |
 | **Gait+CWT+WS+Demo** | **55** | **0.81** | **31.2** | **0.90** | 0.28 | 63.8 | 0.54 |
+
+> **Footnote on `Bout+Act-Top20`.** The pool combines two feature families per setting: (1) **Bout features** — 20 per-segment gait features × 6 aggregation statistics (median, IQR, p10, p90, max, CV) = 120 columns, plus 3 bout-meta columns (total walk seconds, mean bout duration, bout duration CV). Segments are 60 s windows of the 6MWT for clinic, and free-living walking bouts (≥10 s) for home. (2) **Act features** — 29 whole-recording activity features (no segmentation) computed from 1-s ENMO of the same recording. Spearman correlations are computed inside each LOO training fold; the top 20 are used to fit Ridge. Pool sizes: 152 (home and clinic both, after adding clinic activity features). Constant features (e.g., `act_daily_cv` for clinic, since 6MWT < 1 day) get correlation 0 and are never selected.
 
 Reproduce: `python analysis/reproduce_results_table_best_models.py` (~1 min)
 
@@ -23,9 +25,9 @@ Reproduce: `python analysis/reproduce_results_table_best_models.py` (~1 min)
 - **Demo-only row:** cohort_POMS, Age, Sex, BMI — same for clinic and home, Ridge α=20
 - **Demo in combos:** Clinic uses Height, Home uses BMI (different best Demo per setting)
 - **Clinic Gait/CWT/WS:** extracted from full 6MWT, no feature selection, Ridge α varies per set
-- **Clinic PerBout:** 60s windows of 6MWT, Spearman Top-20 inside LOO, Ridge α=5
+- **Clinic Bout+Act:** 60s windows of 6MWT (gait+meta) + activity features from full 6MWT, Spearman Top-20 inside LOO, Ridge α=5
 - **Clinic Gait+CWT+WS+Demo:** all 55 features, no selection, Ridge α=5
-- **Home PerBout:** all walking bouts from full recording, Spearman Top-20 inside LOO, Ridge α=20
+- **Home Bout+Act:** all walking bouts from full recording (gait+meta) + activity features from full multi-day recording, Spearman Top-20 inside LOO, Ridge α=20
 - **Home Gait/CWT/WS:** VM-based (no gravity removal, no axis alignment), Top-10 clean bouts ≥60s, Spearman Top-11 inside LOO
 - **Home Gait+CWT+WS+Demo:** Spearman Top-20 on Gait/CWT/WS accel pool, append Demo(BMI), Ridge α=20
 
@@ -83,17 +85,19 @@ python clinic/extract_gait_cwt_ws_features.py    # ~2 min
 - **CWT (28f):** `extract_cwt()` from raw XYZ VM — Morlet wavelet, 6 temporal segments, mean/std/slope
 - **WalkSway (12f):** `extract_walking_sway()` from preprocessed AP/ML/VT — 10 ENMO-normalized sway features + 2 ratios
 
-### Step 2: PerBout Feature Extraction (123f)
+### Step 2: Bout+Act Feature Extraction (152f)
 
 ```bash
 python clinic/extract_perbout_features.py    # ~1 min
 # Input:  csv_raw2/*.csv
-# Output: feats/clinic_perbout_features.csv (101 x 124)
+# Output: feats/clinic_perbout_features.csv (101 x 153)
 ```
 
 - Split 6MWT into 60s non-overlapping windows (trim first/last 10s)
-- Extract 20 per-bout features per window (same features as home PerBout)
-- Aggregate across windows: 6 stats (median, IQR, p10, p90, max, CV) = 120 gait + 3 meta = 123 features
+- Extract 20 per-bout features per window (same features as home Bout+Act)
+- Aggregate across windows: 6 stats (median, IQR, p10, p90, max, CV) = 120 gait + 3 meta
+- Activity features (29) from second-by-second ENMO of trimmed 6MWT (no segmentation)
+- Total: 120 gait + 3 meta + 29 activity = **152 features**
 
 ### Step 3: Clinic Prediction
 
@@ -144,7 +148,7 @@ Three-stage detection at FS=30 Hz:
 2. Harmonic ratio ≥ 0.2 in 10s windows
 3. Merge gaps ≤ 5s
 
-### Step 2: PerBout Feature Extraction (152f)
+### Step 2: Bout+Act Feature Extraction (152f)
 
 ```bash
 python home/step2_extract_features.py      # ~12 min
@@ -225,7 +229,7 @@ Computed from second-by-second ENMO of the full multi-day recording (no bout seg
 | 28 | `act_early_late_ratio` | Ratio of early-to-late ENMO |
 | 29 | `act_daily_cv` | Day-to-day CV of mean ENMO |
 
-#### PerBout-Top20: Spearman-Selected Features
+#### Bout+Act-Top20: Spearman-Selected Features
 
 The 20 accelerometer features selected by Spearman correlation inside each LOO fold. 15 features are selected in all 101 folds; the remaining 5 slots vary slightly across folds.
 
@@ -301,7 +305,7 @@ python home/reproduce_from_bouts.py [--bout-dir walking_bouts]    # ~18 min
 ```bash
 python home/step0_gt3x_to_npz.py                          # GT3X → NPZ (~60 min)
 python home/step1_detect_walking_bouts.py --save-csv       # Detect + save bouts (~18 min)
-python home/step2_extract_features.py                      # PerBout features (~12 min)
+python home/step2_extract_features.py                      # Bout+Act features (~12 min)
 python home/extract_gait_cwt_ws_features.py                # Gait/CWT/WS features (~3 min)
 python home/step3_predict_all_models.py                    # Predict + all models (<30 sec)
 ```
@@ -376,9 +380,9 @@ All feature set combinations. Clinic=Ridge(α=5), Home=Ridge(α=20).
 | `feats/clinic_gait_features.csv` | `clinic/extract_gait_cwt_ws_features.py` | 11 + key | Clinic Gait from 6MWT |
 | `feats/clinic_cwt_features.csv` | `clinic/extract_gait_cwt_ws_features.py` | 28 + key | Clinic CWT from 6MWT |
 | `feats/clinic_walksway_features.csv` | `clinic/extract_gait_cwt_ws_features.py` | 12 + key | Clinic WalkSway from 6MWT |
-| `feats/clinic_perbout_features.csv` | `clinic/extract_perbout_features.py` | 123 + key | Clinic PerBout (60s windows) |
+| `feats/clinic_perbout_features.csv` | `clinic/extract_perbout_features.py` | 152 + key | Clinic Bout+Act (60s windows + activity) |
 | `feats/home_walking_bouts.pkl` | `home/step1_detect_walking_bouts.py` | — | Walking bout indices per subject |
-| `feats/home_perbout_features.csv` | `home/step2_extract_features.py` | 152 + key | Home PerBout (all bouts) |
+| `feats/home_perbout_features.csv` | `home/step2_extract_features.py` | 152 + key | Home Bout+Act (all bouts + activity) |
 | `feats/home_gait_features.csv` | `home/extract_gait_cwt_ws_features.py` | 66 + key | Home Gait (VM, Top-10 clean bouts) |
 | `feats/home_cwt_features.csv` | `home/extract_gait_cwt_ws_features.py` | 168 + key | Home CWT (VM, Top-10 clean bouts) |
 | `feats/home_walksway_features.csv` | `home/extract_gait_cwt_ws_features.py` | 72 + key | Home WalkSway (VM, Top-10 clean bouts) |
@@ -391,7 +395,7 @@ All feature set combinations. Clinic=Ridge(α=5), Home=Ridge(α=20).
 |---|---|
 | `home/step0_gt3x_to_npz.py` | GT3X → full recording NPZ (no filtering) |
 | `home/step1_detect_walking_bouts.py` | Walking bout detection + optional CSV saving |
-| `home/step2_extract_features.py` | Home PerBout feature extraction (152f) |
+| `home/step2_extract_features.py` | Home Bout+Act feature extraction (152f) |
 | `home/step3_predict.py` | Home Ridge-only prediction (R²=0.452, baseline) |
 | `home/step3_predict_all_models.py` | Home all models comparison (Ridge best, R²=0.452) |
 | `home/extract_gait_cwt_ws_features.py` | Home Gait/CWT/WalkSway features (VM-based) |
@@ -401,7 +405,7 @@ All feature set combinations. Clinic=Ridge(α=5), Home=Ridge(α=20).
 | `clinic/reproduce_c2.py` | Clinic preprocessing + Gait/CWT extraction functions |
 | `clinic/extract_walking_sway.py` | Clinic WalkSway extraction function |
 | `clinic/extract_gait_cwt_ws_features.py` | Clinic Gait/CWT/WalkSway feature extraction |
-| `clinic/extract_perbout_features.py` | Clinic PerBout feature extraction (60s windows) |
+| `clinic/extract_perbout_features.py` | Clinic Bout+Act feature extraction (60s windows + activity) |
 | `analysis/reproduce_results_table_best_models.py` | Results table with best models (~1 min) |
 | `analysis/results_table_full.py` | Full combination tables (~13 min) |
 | `analysis/generate_paper_tables.py` | Generate all paper tables (8 CSVs, ~70 sec) |
@@ -416,7 +420,7 @@ All feature set combinations. Clinic=Ridge(α=5), Home=Ridge(α=20).
 ├── home/                           HOME PIPELINE
 │   ├── step0_gt3x_to_npz.py         GT3X → NPZ
 │   ├── step1_detect_walking_bouts.py Bout detection [--save-csv]
-│   ├── step2_extract_features.py     PerBout features (152f)
+│   ├── step2_extract_features.py     Bout+Act features (152f)
 │   ├── step3_predict.py              Ridge baseline (R²=0.452)
 │   ├── step3_predict_all_models.py   All models comparison
 │   ├── extract_gait_cwt_ws_features.py Gait/CWT/WS features (VM)
@@ -428,7 +432,7 @@ All feature set combinations. Clinic=Ridge(α=5), Home=Ridge(α=20).
 │   ├── reproduce_c2.py               Preprocessing + Gait/CWT functions
 │   ├── extract_walking_sway.py       WalkSway function
 │   ├── extract_gait_cwt_ws_features.py Gait/CWT/WS feature extraction
-│   └── extract_perbout_features.py   PerBout features (60s windows)
+│   └── extract_perbout_features.py   Bout+Act features (60s windows + activity)
 │
 ├── analysis/                       EVALUATION & PAPER OUTPUTS
 │   ├── reproduce_results_table_best_models.py  Results table (best models)
@@ -439,14 +443,14 @@ All feature set combinations. Clinic=Ridge(α=5), Home=Ridge(α=20).
 ├── feats/                          CACHED FEATURES (10 files)
 │   ├── target_6mwd.csv               Ground truth
 │   ├── home_walking_bouts.pkl        Walking bout indices
-│   ├── home_perbout_features.csv     Home PerBout (152f)
+│   ├── home_perbout_features.csv     Home Bout+Act (152f)
 │   ├── home_gait_features.csv        Home Gait (66f)
 │   ├── home_cwt_features.csv         Home CWT (168f)
 │   ├── home_walksway_features.csv    Home WalkSway (72f)
 │   ├── clinic_gait_features.csv      Clinic Gait (11f)
 │   ├── clinic_cwt_features.csv       Clinic CWT (28f)
 │   ├── clinic_walksway_features.csv  Clinic WalkSway (12f)
-│   └── clinic_perbout_features.csv   Clinic PerBout (123f)
+│   └── clinic_perbout_features.csv   Clinic Bout+Act (152f)
 │
 ├── results/                        RESULTS & PAPER OUTPUTS
 │   ├── results_table_best_models.csv  Results table (7 rows)
@@ -481,8 +485,8 @@ All feature set combinations. Clinic=Ridge(α=5), Home=Ridge(α=20).
 
 ### Home Pipeline Design Decisions
 - **Full recording (no daytime filter):** R²=0.452 vs 0.365 with daytime only
-- **No quality filtering for PerBout:** keeping all bouts gives R²=0.452 vs 0.356 with quality filter
-- **Axis-based preprocessing for PerBout:** R²=0.452 vs 0.431 with VM-based
+- **No quality filtering for Bout+Act:** keeping all bouts gives R²=0.452 vs 0.356 with quality filter
+- **Axis-based preprocessing for Bout+Act:** R²=0.452 vs 0.431 with VM-based
 - **VM-based for Gait/CWT/WalkSway:** removes orientation artifacts in short free-living bouts
 - **Top-10 clean bouts ≥60s for Gait/CWT/WS:** longer bouts + quality filter needed for clinic-style features
 

@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """
-Extract clinic PerBout features: split 6MWT into 60s windows, extract 20 per-bout
-features per window, aggregate across windows.
+Extract clinic Bout+Act features:
+  - Split 6MWT into 60s windows, extract 20 per-bout features per window,
+    aggregate across windows (120 gait + 3 meta = 123 bout-aggregated features).
+  - Extract 29 activity features from the full trimmed 6MWT recording.
 
 Input:  csv_raw2/*.csv
-Output: feats/clinic_perbout_features.csv (124 features x 101 subjects)
+Output: feats/clinic_perbout_features.csv (152 features x 101 subjects)
 
 Run:  python clinic/extract_perbout_features.py
 """
@@ -22,7 +24,7 @@ RAW = BASE / 'csv_raw2'
 FS = 30
 WIN_SEC = 60
 
-from home.step2_extract_features import preprocess_segment, extract_bout_features
+from home.step2_extract_features import preprocess_segment, extract_bout_features, extract_activity_features
 
 
 def impute(X):
@@ -94,7 +96,11 @@ if __name__ == '__main__':
             if feats is not None:
                 bout_feats.append(feats)
 
-        all_rows.append(aggregate_bout_feats(bout_feats))
+        row = aggregate_bout_feats(bout_feats)
+        act = extract_activity_features(xyz, fs)
+        if act:
+            row.update(act)
+        all_rows.append(row)
         if (i + 1) % 20 == 0:
             print(f"  [{i+1}/{n}]", flush=True)
 

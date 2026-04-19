@@ -164,7 +164,7 @@ print("Computing LOO predictions...")
 X_clinic_all = np.column_stack([c_gait, c_cwt, c_ws, X_demo_height])
 pred_clinic = loo_ridge_preds(X_clinic_all, y_ft, alpha=5)
 
-# Home best: PerBout-Top20+Demo(BMI), Spearman inside LOO, Ridge alpha=20
+# Home best: Bout+Act-Top20+Demo(BMI), Spearman inside LOO, Ridge alpha=20
 pred_home = loo_spearman_preds(h_pb, X_demo_bmi, y_ft, K=20, alpha=20)
 
 print(f"  Clinic R2={r2_score(y_ft, pred_clinic):.3f}  Home R2={r2_score(y_ft, pred_home):.3f}")
@@ -264,7 +264,7 @@ print(f"  Saved best_predictions.csv")
 print("\n4. error_analysis_by_cohort.csv")
 
 err_rows = []
-for model_name, pred in [('Home: PerBout-Top20+Demo(4)', pred_home),
+for model_name, pred in [('Home: Bout+Act-Top20+Demo(4)', pred_home),
                           ('Clinic: Gait+CWT+WalkSway+Demo', pred_clinic)]:
     for cohort_name, mask in [(f'All (n={n})', np.ones(n, dtype=bool)),
                                (f'POMS (n={is_poms.sum()})', is_poms),
@@ -499,21 +499,21 @@ res_rows.append({'Feature Set': 'Demo', '#f': 4,
     'Home R2': round(cr2, 3), 'Home MAE (m)': round(cmae, 1), 'Home rho': round(crho, 3)})
 print(f'  Demo:              C R2={cr2:.3f}  H R2={cr2:.3f}')
 
-# Row 5: PerBout-Top20
+# Row 5: Bout+Act-Top20
 cr2, cmae, crho = loo_spearman_metrics(c_pb, None, y_ft, K=20, alpha=5)
 hr2, hmae, hrho = loo_spearman_metrics(h_pb, None, y_ft, K=20, alpha=20)
-res_rows.append({'Feature Set': 'PerBout-Top20', '#f': 20,
+res_rows.append({'Feature Set': 'Bout+Act-Top20', '#f': 20,
     'Clinic R2': round(cr2, 3), 'Clinic MAE (m)': round(cmae, 1), 'Clinic rho': round(crho, 3),
     'Home R2': round(hr2, 3), 'Home MAE (m)': round(hmae, 1), 'Home rho': round(hrho, 3)})
-print(f'  PerBout-Top20:     C R2={cr2:.3f}  H R2={hr2:.3f}')
+print(f'  Bout+Act-Top20:     C R2={cr2:.3f}  H R2={hr2:.3f}')
 
-# Row 6: PerBout-Top20+Demo
+# Row 6: Bout+Act-Top20+Demo
 cr2, cmae, crho = loo_spearman_metrics(c_pb, X_demo_bmi, y_ft, K=20, alpha=20)
 hr2, hmae, hrho = loo_spearman_metrics(h_pb, X_demo_bmi, y_ft, K=20, alpha=20)
-res_rows.append({'Feature Set': 'PerBout-Top20+Demo', '#f': 24,
+res_rows.append({'Feature Set': 'Bout+Act-Top20+Demo', '#f': 24,
     'Clinic R2': round(cr2, 3), 'Clinic MAE (m)': round(cmae, 1), 'Clinic rho': round(crho, 3),
     'Home R2': round(hr2, 3), 'Home MAE (m)': round(hmae, 1), 'Home rho': round(hrho, 3)})
-print(f'  PerBout-Top20+Demo: C R2={cr2:.3f}  H R2={hr2:.3f}')
+print(f'  Bout+Act-Top20+Demo: C R2={cr2:.3f}  H R2={hr2:.3f}')
 
 # Row 7: Gait+CWT+WS+Demo
 cr2, cmae, crho = loo_ridge_metrics(X_clinic_all, y_ft, alpha=5)

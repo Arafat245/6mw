@@ -160,7 +160,7 @@ print("\nFig 5: fig_predicted_vs_actual.png")
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4.5))
 
 for ax, pred_m, title, r2, mae, rho in [
-    (ax1, pred_home_m, 'Home: PerBout-Top20+Demo(4)', h_r2, h_mae, h_rho),
+    (ax1, pred_home_m, 'Home: Bout+Act-Top20+Demo(4)', h_r2, h_mae, h_rho),
     (ax2, pred_clinic_m, 'Clinic: Gait+CWT+WalkSway+Demo', c_r2, c_mae, c_rho),
 ]:
     # Per-cohort R2
@@ -202,7 +202,7 @@ print("\nFig 6: fig_bland_altman.png")
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4.5))
 
 for ax, pred_m, title in [
-    (ax1, pred_home_m, 'Home: PerBout-Top20+Demo(4)'),
+    (ax1, pred_home_m, 'Home: Bout+Act-Top20+Demo(4)'),
     (ax2, pred_clinic_m, 'Clinic: Gait+CWT+WalkSway+Demo'),
 ]:
     mean_vals = (y_m + pred_m) / 2
