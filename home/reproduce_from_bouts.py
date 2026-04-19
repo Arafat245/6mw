@@ -257,7 +257,6 @@ if __name__ == '__main__':
                 row[f'g_{name}_p90'] = np.percentile(valid, 90)
                 row[f'g_{name}_max'] = np.max(valid)
                 row[f'g_{name}_cv'] = np.std(valid) / (np.mean(valid) + 1e-12)
-            row['g_n_valid_bouts'] = len(bout_feats)
             row['g_total_walk_sec'] = sum(bf.get('duration_sec', 0) for bf in bout_feats)
             durs = [bf.get('duration_sec', 0) for bf in bout_feats]
             row['g_mean_bout_dur'] = np.mean(durs)
@@ -272,7 +271,7 @@ if __name__ == '__main__':
                 row.update(act)
 
         all_rows.append(row)
-        nb = row.get('g_n_valid_bouts', 0)
+        nb = len(bout_feats)
         if (i + 1) % 10 == 0:
             print(f"  [{i+1}/{n}] {r['key']}: {nb} valid bouts", flush=True)
 

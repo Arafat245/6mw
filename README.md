@@ -83,17 +83,17 @@ python clinic/extract_gait_cwt_ws_features.py    # ~2 min
 - **CWT (28f):** `extract_cwt()` from raw XYZ VM — Morlet wavelet, 6 temporal segments, mean/std/slope
 - **WalkSway (12f):** `extract_walking_sway()` from preprocessed AP/ML/VT — 10 ENMO-normalized sway features + 2 ratios
 
-### Step 2: PerBout Feature Extraction (124f)
+### Step 2: PerBout Feature Extraction (123f)
 
 ```bash
 python clinic/extract_perbout_features.py    # ~1 min
 # Input:  csv_raw2/*.csv
-# Output: feats/clinic_perbout_features.csv (101 x 125)
+# Output: feats/clinic_perbout_features.csv (101 x 124)
 ```
 
 - Split 6MWT into 60s non-overlapping windows (trim first/last 10s)
 - Extract 20 per-bout features per window (same features as home PerBout)
-- Aggregate across windows: 6 stats (median, IQR, p10, p90, max, CV) = 120 gait + 4 meta = 124 features
+- Aggregate across windows: 6 stats (median, IQR, p10, p90, max, CV) = 120 gait + 3 meta = 123 features
 
 ### Step 3: Clinic Prediction
 
@@ -144,15 +144,15 @@ Three-stage detection at FS=30 Hz:
 2. Harmonic ratio ≥ 0.2 in 10s windows
 3. Merge gaps ≤ 5s
 
-### Step 2: PerBout Feature Extraction (153f)
+### Step 2: PerBout Feature Extraction (152f)
 
 ```bash
 python home/step2_extract_features.py      # ~12 min
 # Input:  home_full_recording_npz/*.npz + feats/home_walking_bouts.pkl
-# Output: feats/home_perbout_features.csv (101 x 154)
+# Output: feats/home_perbout_features.csv (101 x 153)
 ```
 
-Per-bout preprocessing: gravity removal → Rodrigues rotation → PCA yaw alignment → AP, ML, VT + bandpass + ENMO. Extract 20 features per bout, aggregate with 6 stats (median, IQR, p10, p90, max, CV) = 120 gait + 4 meta + 29 activity = **153 features**.
+Per-bout preprocessing: gravity removal → Rodrigues rotation → PCA yaw alignment → AP, ML, VT + bandpass + ENMO. Extract 20 features per bout, aggregate with 6 stats (median, IQR, p10, p90, max, CV) = 120 gait + 3 meta + 29 activity = **152 features**.
 
 #### 20 Per-Bout Gait Features
 
@@ -181,14 +181,13 @@ Each feature is extracted per walking bout, then aggregated across all bouts usi
 | 19 | `signal_energy` | Mean squared dynamic vector magnitude |
 | 20 | `duration_sec` | Bout duration in seconds |
 
-#### 4 Meta Features
+#### 3 Meta Features
 
 | # | Feature | Description |
 |---|---|---|
-| 1 | `g_n_valid_bouts` | Total number of valid walking bouts |
-| 2 | `g_total_walk_sec` | Total walking duration across all bouts (seconds) |
-| 3 | `g_mean_bout_dur` | Mean bout duration (seconds) |
-| 4 | `g_bout_dur_cv` | Coefficient of variation of bout durations |
+| 1 | `g_total_walk_sec` | Total walking duration across all bouts (seconds) |
+| 2 | `g_mean_bout_dur` | Mean bout duration (seconds) |
+| 3 | `g_bout_dur_cv` | Coefficient of variation of bout durations |
 
 #### 29 Activity Features (whole recording)
 
@@ -377,9 +376,9 @@ All feature set combinations. Clinic=Ridge(α=5), Home=Ridge(α=20).
 | `feats/clinic_gait_features.csv` | `clinic/extract_gait_cwt_ws_features.py` | 11 + key | Clinic Gait from 6MWT |
 | `feats/clinic_cwt_features.csv` | `clinic/extract_gait_cwt_ws_features.py` | 28 + key | Clinic CWT from 6MWT |
 | `feats/clinic_walksway_features.csv` | `clinic/extract_gait_cwt_ws_features.py` | 12 + key | Clinic WalkSway from 6MWT |
-| `feats/clinic_perbout_features.csv` | `clinic/extract_perbout_features.py` | 124 + key | Clinic PerBout (60s windows) |
+| `feats/clinic_perbout_features.csv` | `clinic/extract_perbout_features.py` | 123 + key | Clinic PerBout (60s windows) |
 | `feats/home_walking_bouts.pkl` | `home/step1_detect_walking_bouts.py` | — | Walking bout indices per subject |
-| `feats/home_perbout_features.csv` | `home/step2_extract_features.py` | 153 + key | Home PerBout (all bouts) |
+| `feats/home_perbout_features.csv` | `home/step2_extract_features.py` | 152 + key | Home PerBout (all bouts) |
 | `feats/home_gait_features.csv` | `home/extract_gait_cwt_ws_features.py` | 66 + key | Home Gait (VM, Top-10 clean bouts) |
 | `feats/home_cwt_features.csv` | `home/extract_gait_cwt_ws_features.py` | 168 + key | Home CWT (VM, Top-10 clean bouts) |
 | `feats/home_walksway_features.csv` | `home/extract_gait_cwt_ws_features.py` | 72 + key | Home WalkSway (VM, Top-10 clean bouts) |
@@ -392,7 +391,7 @@ All feature set combinations. Clinic=Ridge(α=5), Home=Ridge(α=20).
 |---|---|
 | `home/step0_gt3x_to_npz.py` | GT3X → full recording NPZ (no filtering) |
 | `home/step1_detect_walking_bouts.py` | Walking bout detection + optional CSV saving |
-| `home/step2_extract_features.py` | Home PerBout feature extraction (153f) |
+| `home/step2_extract_features.py` | Home PerBout feature extraction (152f) |
 | `home/step3_predict.py` | Home Ridge-only prediction (R²=0.452, baseline) |
 | `home/step3_predict_all_models.py` | Home all models comparison (Ridge best, R²=0.452) |
 | `home/extract_gait_cwt_ws_features.py` | Home Gait/CWT/WalkSway features (VM-based) |
@@ -417,7 +416,7 @@ All feature set combinations. Clinic=Ridge(α=5), Home=Ridge(α=20).
 ├── home/                           HOME PIPELINE
 │   ├── step0_gt3x_to_npz.py         GT3X → NPZ
 │   ├── step1_detect_walking_bouts.py Bout detection [--save-csv]
-│   ├── step2_extract_features.py     PerBout features (153f)
+│   ├── step2_extract_features.py     PerBout features (152f)
 │   ├── step3_predict.py              Ridge baseline (R²=0.452)
 │   ├── step3_predict_all_models.py   All models comparison
 │   ├── extract_gait_cwt_ws_features.py Gait/CWT/WS features (VM)
@@ -440,14 +439,14 @@ All feature set combinations. Clinic=Ridge(α=5), Home=Ridge(α=20).
 ├── feats/                          CACHED FEATURES (10 files)
 │   ├── target_6mwd.csv               Ground truth
 │   ├── home_walking_bouts.pkl        Walking bout indices
-│   ├── home_perbout_features.csv     Home PerBout (153f)
+│   ├── home_perbout_features.csv     Home PerBout (152f)
 │   ├── home_gait_features.csv        Home Gait (66f)
 │   ├── home_cwt_features.csv         Home CWT (168f)
 │   ├── home_walksway_features.csv    Home WalkSway (72f)
 │   ├── clinic_gait_features.csv      Clinic Gait (11f)
 │   ├── clinic_cwt_features.csv       Clinic CWT (28f)
 │   ├── clinic_walksway_features.csv  Clinic WalkSway (12f)
-│   └── clinic_perbout_features.csv   Clinic PerBout (124f)
+│   └── clinic_perbout_features.csv   Clinic PerBout (123f)
 │
 ├── results/                        RESULTS & PAPER OUTPUTS
 │   ├── results_table_best_models.csv  Results table (7 rows)

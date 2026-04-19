@@ -55,7 +55,6 @@ def aggregate_bout_feats(bout_feats):
         row[f'g_{name}_p90'] = np.percentile(valid, 90)
         row[f'g_{name}_max'] = np.max(valid)
         row[f'g_{name}_cv'] = np.std(valid) / (np.mean(valid) + 1e-12)
-    row['g_n_valid_bouts'] = len(bout_feats)
     row['g_total_walk_sec'] = sum(bf.get('duration_sec', 0) for bf in bout_feats)
     durs = [bf.get('duration_sec', 0) for bf in bout_feats]
     row['g_mean_bout_dur'] = np.mean(durs)
