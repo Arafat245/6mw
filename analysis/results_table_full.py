@@ -7,7 +7,7 @@ Table 1: No feature selection on Gait/CWT/WS (appended as-is to fixed blocks)
 Table 2: Spearman Top-20 on Gait/CWT/WS (selection inside LOO)
 
 Fixed blocks (no selection applied):
-  - Bout+Act-Top20: Spearman Top-20 inside LOO from 153/124 accel features
+  - Bout+Act-Top20: Spearman Top-20 inside LOO from 151 accel features (both settings)
   - Demo: 4 features (cohort_POMS, Age, Sex, Height for clinic / BMI for home)
   - Demo-only row: uses BMI for both clinic and home
 

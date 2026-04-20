@@ -26,6 +26,8 @@ warnings.filterwarnings('ignore')
 BASE = Path(__file__).parent.parent
 NPZ_DIR = BASE / 'home_full_recording_npz'
 FT2M = 0.3048
+N_BOOT = 2000
+RNG = np.random.default_rng(42)
 
 
 def impute(X):
@@ -38,17 +40,17 @@ def impute(X):
 
 
 def loo_ridge(X, y, alpha):
-    """Ridge LOO, no feature selection."""
+    """Ridge LOO, no feature selection. Returns LOO predictions (feet)."""
     pr = np.zeros(len(y))
     for tr, te in LeaveOneOut().split(X):
         sc = StandardScaler(); m = Ridge(alpha=alpha)
         m.fit(sc.fit_transform(X[tr]), y[tr])
         pr[te] = m.predict(sc.transform(X[te]))
-    return r2_score(y, pr), mean_absolute_error(y * FT2M, pr * FT2M), pearsonr(y, pr)[0]
+    return pr
 
 
 def loo_spearman_ridge(X_accel, X_demo, y, K=20, alpha=20):
-    """Spearman Top-K + Demo, Ridge."""
+    """Spearman Top-K + Demo, Ridge. Returns LOO predictions (feet)."""
     n_accel = X_accel.shape[1]
     pr = np.zeros(len(y))
     for i in range(len(y)):
@@ -66,7 +68,32 @@ def loo_spearman_ridge(X_accel, X_demo, y, K=20, alpha=20):
         sc = StandardScaler(); m = Ridge(alpha=alpha)
         m.fit(sc.fit_transform(X_tr), y[tr])
         pr[i] = m.predict(sc.transform(X_te))[0]
-    return r2_score(y, pr), mean_absolute_error(y * FT2M, pr * FT2M), pearsonr(y, pr)[0]
+    return pr
+
+
+def metrics_with_ci(y_ft, pr_ft, n_boot=N_BOOT, rng=RNG):
+    """Point estimate + 95% percentile bootstrap CI for R², MAE (m), Pearson r."""
+    y_m = y_ft * FT2M; pr_m = pr_ft * FT2M
+    r2 = r2_score(y_ft, pr_ft)
+    mae = mean_absolute_error(y_m, pr_m)
+    r_v = pearsonr(y_ft, pr_ft)[0]
+    n = len(y_ft)
+    r2b, maeb, rb = np.empty(n_boot), np.empty(n_boot), np.empty(n_boot)
+    for b in range(n_boot):
+        idx = rng.integers(0, n, size=n)
+        yb, pb = y_ft[idx], pr_ft[idx]
+        try:
+            r2b[b] = r2_score(yb, pb)
+        except Exception:
+            r2b[b] = np.nan
+        maeb[b] = mean_absolute_error(yb * FT2M, pb * FT2M)
+        rb[b] = pearsonr(yb, pb)[0] if np.std(yb) > 0 and np.std(pb) > 0 else np.nan
+    pct = lambda x: (np.nanpercentile(x, 2.5), np.nanpercentile(x, 97.5))
+    return r2, pct(r2b), mae, pct(maeb), r_v, pct(rb)
+
+
+def fmt2(v, lo, hi): return f"{v:.2f} [{lo:.2f}, {hi:.2f}]"
+def fmt1(v, lo, hi): return f"{v:.1f} [{lo:.1f}, {hi:.1f}]"
 
 
 if __name__ == '__main__':
@@ -101,75 +128,55 @@ if __name__ == '__main__':
     h_cwt = impute(pd.read_csv(FEATS / 'home_cwt_features.csv').drop(columns='key').values.astype(float))
     h_ws = impute(pd.read_csv(FEATS / 'home_walksway_features.csv').drop(columns='key').values.astype(float))
 
-    print(f'\nComputing results (Clinic=Ridge(α=5), Home=Ridge(α=20))...')
+    print(f'\nComputing LOO predictions (Clinic=Ridge(α=5), Home=Ridge(α=20))...')
+    configs = [
+        ('Gait',                 11, lambda: loo_ridge(c_gait, y, alpha=5),
+                                     lambda: loo_spearman_ridge(h_gait, None, y, K=11, alpha=5)),
+        ('CWT',                  28, lambda: loo_ridge(c_cwt, y, alpha=20),
+                                     lambda: loo_spearman_ridge(h_cwt, None, y, K=11, alpha=20)),
+        ('WalkSway',             12, lambda: loo_ridge(c_ws, y, alpha=5),
+                                     lambda: loo_spearman_ridge(h_ws, None, y, K=11, alpha=5)),
+        ('Demo',                  4, lambda: loo_ridge(X_demo_bmi, y, alpha=20),
+                                     None),  # home == clinic for demo-only
+        ('Bout+Act-Top20',       20, lambda: loo_spearman_ridge(c_pb, None, y, K=20, alpha=5),
+                                     lambda: loo_spearman_ridge(h_pb, None, y, K=20, alpha=20)),
+        ('Bout+Act-Top20+Demo',  24, lambda: loo_spearman_ridge(c_pb, X_demo_bmi, y, K=20, alpha=20),
+                                     lambda: loo_spearman_ridge(h_pb, X_demo_bmi, y, K=20, alpha=20)),
+        ('Gait+CWT+WS+Demo',     55, lambda: loo_ridge(np.column_stack([c_gait, c_cwt, c_ws, X_demo_height]), y, alpha=5),
+                                     lambda: loo_spearman_ridge(np.column_stack([h_gait, h_cwt, h_ws]), X_demo_bmi, y, K=20, alpha=20)),
+    ]
+
     rows = []
+    for name, nf, clinic_fn, home_fn in configs:
+        pr_c = clinic_fn()
+        cr2, cci, cmae, mcci, cr_p, rcci = metrics_with_ci(y, pr_c)
+        if home_fn is None:  # demo-only: home prediction identical to clinic
+            pr_h = pr_c
+            hr2, hci, hmae, mhci, hr_p, rhci = cr2, cci, cmae, mcci, cr_p, rcci
+        else:
+            pr_h = home_fn()
+            hr2, hci, hmae, mhci, hr_p, rhci = metrics_with_ci(y, pr_h)
+        rows.append({
+            'Feature Set': name, '#f': nf,
+            'Clinic R² [95% CI]':       fmt2(cr2, *cci),
+            'Clinic MAE (m) [95% CI]':  fmt1(cmae, *mcci),
+            'Clinic r [95% CI]':        fmt2(cr_p, *rcci),
+            'Home R² [95% CI]':         fmt2(hr2, *hci),
+            'Home MAE (m) [95% CI]':    fmt1(hmae, *mhci),
+            'Home r [95% CI]':          fmt2(hr_p, *rhci),
+        })
+        print(f'  {name:<22s}  C R²={cr2:.2f} [{cci[0]:.2f},{cci[1]:.2f}]  H R²={hr2:.2f} [{hci[0]:.2f},{hci[1]:.2f}]')
 
-    # ── Row 1: Gait ──
-    cr2, cmae, cr_p =loo_ridge(c_gait, y, alpha=5)
-    hr2, hmae, hr_p =loo_spearman_ridge(h_gait, None, y, K=11, alpha=5)
-    rows.append({'Feature Set': 'Gait', '#f': 11,
-                 'Clinic R²': round(cr2, 2), 'Clinic MAE (m)': round(cmae, 1), 'Clinic r': round(cr_p, 2),
-                 'Home R²': round(hr2, 2), 'Home MAE (m)': round(hmae, 1), 'Home r': round(hr_p, 2)})
-    print(f'  Gait:              C R²={cr2:.3f}  H R²={hr2:.3f}')
-
-    # ── Row 2: CWT ──
-    cr2, cmae, cr_p =loo_ridge(c_cwt, y, alpha=20)
-    hr2, hmae, hr_p =loo_spearman_ridge(h_cwt, None, y, K=11, alpha=20)
-    rows.append({'Feature Set': 'CWT', '#f': 28,
-                 'Clinic R²': round(cr2, 2), 'Clinic MAE (m)': round(cmae, 1), 'Clinic r': round(cr_p, 2),
-                 'Home R²': round(hr2, 2), 'Home MAE (m)': round(hmae, 1), 'Home r': round(hr_p, 2)})
-    print(f'  CWT:               C R²={cr2:.3f}  H R²={hr2:.3f}')
-
-    # ── Row 3: WalkSway ──
-    cr2, cmae, cr_p =loo_ridge(c_ws, y, alpha=5)
-    hr2, hmae, hr_p =loo_spearman_ridge(h_ws, None, y, K=11, alpha=5)
-    rows.append({'Feature Set': 'WalkSway', '#f': 12,
-                 'Clinic R²': round(cr2, 2), 'Clinic MAE (m)': round(cmae, 1), 'Clinic r': round(cr_p, 2),
-                 'Home R²': round(hr2, 2), 'Home MAE (m)': round(hmae, 1), 'Home r': round(hr_p, 2)})
-    print(f'  WalkSway:          C R²={cr2:.3f}  H R²={hr2:.3f}')
-
-    # ── Row 4: Demo ──
-    cr2, cmae, cr_p =loo_ridge(X_demo_bmi, y, alpha=20)
-    hr2, hmae, hr_p = cr2, cmae, cr_p  # identical
-    rows.append({'Feature Set': 'Demo', '#f': 4,
-                 'Clinic R²': round(cr2, 2), 'Clinic MAE (m)': round(cmae, 1), 'Clinic r': round(cr_p, 2),
-                 'Home R²': round(hr2, 2), 'Home MAE (m)': round(hmae, 1), 'Home r': round(hr_p, 2)})
-    print(f'  Demo:              C R²={cr2:.3f}  H R²={hr2:.3f}')
-
-    # ── Row 5: Bout+Act-Top20 ──
-    cr2, cmae, cr_p =loo_spearman_ridge(c_pb, None, y, K=20, alpha=5)
-    hr2, hmae, hr_p =loo_spearman_ridge(h_pb, None, y, K=20, alpha=20)
-    rows.append({'Feature Set': 'Bout+Act-Top20', '#f': 20,
-                 'Clinic R²': round(cr2, 2), 'Clinic MAE (m)': round(cmae, 1), 'Clinic r': round(cr_p, 2),
-                 'Home R²': round(hr2, 2), 'Home MAE (m)': round(hmae, 1), 'Home r': round(hr_p, 2)})
-    print(f'  Bout+Act-Top20:     C R²={cr2:.3f}  H R²={hr2:.3f}')
-
-    # ── Row 6: Bout+Act-Top20+Demo ──
-    cr2, cmae, cr_p =loo_spearman_ridge(c_pb, X_demo_bmi, y, K=20, alpha=20)
-    hr2, hmae, hr_p =loo_spearman_ridge(h_pb, X_demo_bmi, y, K=20, alpha=20)
-    rows.append({'Feature Set': 'Bout+Act-Top20+Demo', '#f': 24,
-                 'Clinic R²': round(cr2, 2), 'Clinic MAE (m)': round(cmae, 1), 'Clinic r': round(cr_p, 2),
-                 'Home R²': round(hr2, 2), 'Home MAE (m)': round(hmae, 1), 'Home r': round(hr_p, 2)})
-    print(f'  Bout+Act-Top20+Demo: C R²={cr2:.3f}  H R²={hr2:.3f}')
-
-    # ── Row 7: Gait+CWT+WS+Demo ──
-    X_clinic_all = np.column_stack([c_gait, c_cwt, c_ws, X_demo_height])
-    cr2, cmae, cr_p =loo_ridge(X_clinic_all, y, alpha=5)
-    X_home_gcw = np.column_stack([h_gait, h_cwt, h_ws])
-    hr2, hmae, hr_p =loo_spearman_ridge(X_home_gcw, X_demo_bmi, y, K=20, alpha=20)
-    rows.append({'Feature Set': 'Gait+CWT+WS+Demo', '#f': 55,
-                 'Clinic R²': round(cr2, 2), 'Clinic MAE (m)': round(cmae, 1), 'Clinic r': round(cr_p, 2),
-                 'Home R²': round(hr2, 2), 'Home MAE (m)': round(hmae, 1), 'Home r': round(hr_p, 2)})
-    print(f'  Gait+CWT+WS+Demo: C R²={cr2:.3f}  H R²={hr2:.3f}')
-
-    # Save
+    # Save to results/ (canonical) and POMS/tables/ (paper-side copy)
     df = pd.DataFrame(rows)
-    RESULTS = BASE / 'results'
-    RESULTS.mkdir(exist_ok=True)
+    RESULTS = BASE / 'results'; RESULTS.mkdir(exist_ok=True)
+    POMS_TABLES = BASE / 'POMS' / 'tables'; POMS_TABLES.mkdir(parents=True, exist_ok=True)
     df.to_csv(RESULTS / 'results_table_best_models.csv', index=False)
+    df.to_csv(POMS_TABLES / 'results_table_final.csv', index=False)  # replaces legacy file
 
     print(f'\n{df.to_string(index=False)}')
-    print(f'\nClinic model: Ridge(α=5)')
-    print(f'Home model:   Ridge(α=20)')
-    print(f'\nSaved results/results_table_best_models.csv')
+    print(f'\nClinic model: Ridge(α=5)    Home model: Ridge(α=20)')
+    print(f'Bootstrap resamples: {N_BOOT}  |  seed: 42  |  percentile CI (2.5%, 97.5%)')
+    print(f'Saved: results/results_table_best_models.csv')
+    print(f'       POMS/tables/results_table_final.csv')
     print(f'Done in {time.time() - t0:.0f}s')

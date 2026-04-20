@@ -6,21 +6,21 @@ Predicting 6MWD from hip-worn accelerometer data collected during clinic 6-minut
 
 ## Results Table
 
-| Feature Set | #f | Clinic R² | Clinic MAE (m) | Clinic r | Home R² | Home MAE (m) | Home r |
+| Feature Set | #f | Clinic R² [95% CI] | Clinic MAE (m) [95% CI] | Clinic r [95% CI] | Home R² [95% CI] | Home MAE (m) [95% CI] | Home r [95% CI] |
 |---|---|---|---|---|---|---|---|
-| Gait | 11 | 0.68 | 42.7 | 0.83 | 0.15 | 70.1 | 0.41 |
-| CWT | 28 | 0.36 | 60.2 | 0.60 | 0.15 | 67.9 | 0.40 |
-| WalkSway | 12 | 0.40 | 54.2 | 0.63 | 0.06 | 73.3 | 0.29 |
-| Demo | 4 | 0.36 | 60.8 | 0.60 | 0.36 | 60.8 | 0.60 |
-| Bout+Act-Top20 | 20 | 0.63 | 44.3 | 0.79 | 0.18 | 67.2 | 0.43 |
-| Bout+Act-Top20+Demo | 24 | 0.69 | 39.6 | 0.83 | **0.45** | **56.0** | **0.67** |
-| **Gait+CWT+WS+Demo** | **55** | **0.81** | **31.2** | **0.90** | 0.28 | 63.8 | 0.54 |
+| Gait | 11 | 0.68 [0.51, 0.78] | 42.7 [35.8, 50.1] | 0.83 [0.74, 0.89] | 0.15 [−0.10, 0.31] | 70.1 [58.5, 83.1] | 0.41 [0.18, 0.57] |
+| CWT | 28 | 0.36 [0.19, 0.47] | 60.2 [50.1, 71.4] | 0.60 [0.49, 0.70] | 0.15 [−0.04, 0.31] | 67.9 [56.6, 80.8] | 0.40 [0.23, 0.57] |
+| WalkSway | 12 | 0.40 [0.23, 0.57] | 54.2 [43.8, 65.7] | 0.63 [0.49, 0.77] | 0.06 [−0.20, 0.19] | 73.3 [61.1, 86.6] | 0.29 [0.12, 0.45] |
+| Demo | 4 | 0.36 [0.21, 0.46] | 60.8 [50.9, 71.3] | 0.60 [0.49, 0.70] | 0.36 [0.21, 0.46] | 60.8 [50.9, 71.3] | 0.60 [0.49, 0.70] |
+| Bout+Act-Top20 | 20 | 0.63 [0.49, 0.73] | 44.3 [36.5, 53.0] | 0.79 [0.72, 0.86] | 0.18 [0.01, 0.30] | 67.2 [55.9, 80.3] | 0.43 [0.28, 0.56] |
+| Bout+Act-Top20+Demo | 24 | 0.69 [0.58, 0.77] | 39.6 [32.0, 48.2] | 0.83 [0.77, 0.88] | **0.45 [0.30, 0.55]** | **56.0 [46.8, 65.5]** | **0.67 [0.57, 0.76]** |
+| **Gait+CWT+WS+Demo** | **55** | **0.81 [0.71, 0.88]** | **31.2 [25.5, 37.1]** | **0.90 [0.85, 0.94]** | 0.28 [0.04, 0.44] | 63.8 [52.8, 75.3] | 0.54 [0.39, 0.67] |
 
-> **Footnote on `Bout+Act-Top20`.** The pool combines two feature families per setting: (1) **Bout features** — 20 per-segment gait features × 6 aggregation statistics (median, IQR, p10, p90, max, CV) = 120 columns, plus 3 bout-meta columns (total walk seconds, mean bout duration, bout duration CV). Segments are 60 s windows of the 6MWT for clinic, and free-living walking bouts (≥10 s) for home. (2) **Act features** — 29 whole-recording activity features (no segmentation) computed from 1-s ENMO of the same recording. Spearman correlations are computed inside each LOO training fold; the top 20 are used to fit Ridge. Pool sizes: 152 (home and clinic both, after adding clinic activity features). Constant features (e.g., `act_daily_cv` for clinic, since 6MWT < 1 day) get correlation 0 and are never selected.
+> **Footnote on `Bout+Act-Top20`.** The pool combines two feature families per setting: (1) **Bout features** — 20 per-segment gait features × 6 aggregation statistics (median, IQR, p10, p90, max, CV) = 120 columns, plus 2 bout-meta columns (total walk seconds, mean bout duration). Segments are 60 s windows of the 6MWT for clinic, and free-living walking bouts (≥10 s) for home. (2) **Act features** — 29 whole-recording activity features (no segmentation) computed from 1-s ENMO of the same recording. Spearman correlations are computed inside each LOO training fold; the top 20 are used to fit Ridge. Pool sizes: 151 (home and clinic both, after adding clinic activity features and deduplicating g_bout_dur_cv). Constant features (e.g., `act_daily_cv` for clinic, since 6MWT < 1 day) get correlation 0 and are never selected.
 
 Reproduce: `python analysis/reproduce_results_table_best_models.py` (~1 min)
 
-- **n=101**, LOO CV, no data leakage. All metrics in meters. Correlation column is Pearson **r** between predicted and true 6MWD (Spearman ρ available from scripts; ρ used only for feature selection inside folds).
+- **n=101**, LOO CV, no data leakage. All metrics in meters. Correlation column is Pearson **r** between predicted and true 6MWD (Spearman ρ available from scripts; ρ used only for feature selection inside folds). 95% CIs are percentile bootstrap over the LOO predictions (B=2000, seed=42).
 - **Both clinic and home use Ridge regression.** Clinic α=5, Home α=20.
 - **Demo-only row:** cohort_POMS, Age, Sex, BMI — same for clinic and home, Ridge α=20
 - **Demo in combos:** Clinic uses Height, Home uses BMI (different best Demo per setting)
@@ -85,19 +85,19 @@ python clinic/extract_gait_cwt_ws_features.py    # ~2 min
 - **CWT (28f):** `extract_cwt()` from raw XYZ VM — Morlet wavelet, 6 temporal segments, mean/std/slope
 - **WalkSway (12f):** `extract_walking_sway()` from preprocessed AP/ML/VT — 10 ENMO-normalized sway features + 2 ratios
 
-### Step 2: Bout+Act Feature Extraction (152f)
+### Step 2: Bout+Act Feature Extraction (151f)
 
 ```bash
 python clinic/extract_perbout_features.py    # ~1 min
 # Input:  csv_raw2/*.csv
-# Output: feats/clinic_perbout_features.csv (101 x 153)
+# Output: feats/clinic_perbout_features.csv (101 x 152)
 ```
 
 - Split 6MWT into 60s non-overlapping windows (trim first/last 10s)
 - Extract 20 per-bout features per window (same features as home Bout+Act)
-- Aggregate across windows: 6 stats (median, IQR, p10, p90, max, CV) = 120 gait + 3 meta
+- Aggregate across windows: 6 stats (median, IQR, p10, p90, max, CV) = 120 gait + 2 meta
 - Activity features (29) from second-by-second ENMO of trimmed 6MWT (no segmentation)
-- Total: 120 gait + 3 meta + 29 activity = **152 features**
+- Total: 120 gait + 2 meta + 29 activity = **151 features**
 
 ### Step 3: Clinic Prediction
 
@@ -148,15 +148,15 @@ Three-stage detection at FS=30 Hz:
 2. Harmonic ratio ≥ 0.2 in 10s windows
 3. Merge gaps ≤ 5s
 
-### Step 2: Bout+Act Feature Extraction (152f)
+### Step 2: Bout+Act Feature Extraction (151f)
 
 ```bash
 python home/step2_extract_features.py      # ~12 min
 # Input:  home_full_recording_npz/*.npz + feats/home_walking_bouts.pkl
-# Output: feats/home_perbout_features.csv (101 x 153)
+# Output: feats/home_perbout_features.csv (101 x 152)
 ```
 
-Per-bout preprocessing: gravity removal → Rodrigues rotation → PCA yaw alignment → AP, ML, VT + bandpass + ENMO. Extract 20 features per bout, aggregate with 6 stats (median, IQR, p10, p90, max, CV) = 120 gait + 3 meta + 29 activity = **152 features**.
+Per-bout preprocessing: gravity removal → Rodrigues rotation → PCA yaw alignment → AP, ML, VT + bandpass + ENMO. Extract 20 features per bout, aggregate with 6 stats (median, IQR, p10, p90, max, CV) = 120 gait + 2 meta + 29 activity = **151 features**.
 
 #### 20 Per-Bout Gait Features
 
@@ -185,13 +185,14 @@ Each feature is extracted per walking bout, then aggregated across all bouts usi
 | 19 | `signal_energy` | Mean squared dynamic vector magnitude |
 | 20 | `duration_sec` | Bout duration in seconds |
 
-#### 3 Meta Features
+#### 2 Meta Features
 
 | # | Feature | Description |
 |---|---|---|
 | 1 | `g_total_walk_sec` | Total walking duration across all bouts (seconds) |
 | 2 | `g_mean_bout_dur` | Mean bout duration (seconds) |
-| 3 | `g_bout_dur_cv` | Coefficient of variation of bout durations |
+
+(Note: `g_bout_dur_cv` was removed from the pool because it is mathematically identical to `g_duration_sec_cv` — the CV aggregation of the per-bout `duration_sec` feature. VIF = 10¹² confirmed the exact collinearity.)
 
 #### 29 Activity Features (whole recording)
 
@@ -231,30 +232,30 @@ Computed from second-by-second ENMO of the full multi-day recording (no bout seg
 
 #### Bout+Act-Top20: Spearman-Selected Features
 
-The 20 accelerometer features selected by Spearman correlation inside each LOO fold. 15 features are selected in all 101 folds; the remaining 5 slots vary slightly across folds.
+The 20 accelerometer features selected by Spearman correlation inside each LOO fold (after the `g_bout_dur_cv` dedup). 15 features are selected in all 101 folds; the remaining 5 slots vary slightly across folds.
 
 | # | Feature | Folds Selected | Spearman ρ |
 |---|---|---|---|
-| 1 | `g_duration_sec_max` | 101/101 | 0.375 |
-| 2 | `act_pct_vigorous` | 101/101 | 0.370 |
-| 3 | `g_duration_sec_cv` | 101/101 | 0.367 |
-| 4 | `g_bout_dur_cv` | 101/101 | 0.367 |
-| 5 | `act_enmo_p95` | 101/101 | 0.366 |
-| 6 | `g_ap_rms_med` | 101/101 | 0.355 |
-| 7 | `g_enmo_mean_p10` | 101/101 | 0.350 |
-| 8 | `g_ap_rms_cv` | 101/101 | 0.347 |
-| 9 | `g_jerk_mean_med` | 101/101 | 0.345 |
-| 10 | `g_acf_step_reg_max` | 101/101 | 0.344 |
-| 11 | `g_ml_rms_cv` | 101/101 | 0.342 |
-| 12 | `g_vm_std_med` | 101/101 | 0.333 |
-| 13 | `g_vm_std_cv` | 101/101 | 0.333 |
-| 14 | `g_enmo_p95_med` | 101/101 | 0.330 |
-| 15 | `g_ml_range_med` | 101/101 | 0.328 |
-| 16 | `g_acf_step_reg_p90` | 100/101 | 0.337 |
-| 17 | `g_enmo_mean_med` | 100/101 | 0.326 |
-| 18 | `g_signal_energy_med` | 98/101 | 0.324 |
-| 19 | `g_ml_range_cv` | 82/101 | 0.325 |
-| 20 | `g_ml_rms_med` / `g_vt_range_med` | 45/101 | 0.319 |
+| 1 | `g_duration_sec_max` | 101/101 | +0.375 |
+| 2 | `act_pct_vigorous` | 101/101 | +0.370 |
+| 3 | `g_duration_sec_cv` | 101/101 | +0.367 |
+| 4 | `act_enmo_p95` | 101/101 | +0.366 |
+| 5 | `g_ap_rms_med` | 101/101 | +0.355 |
+| 6 | `g_enmo_mean_p10` | 101/101 | +0.350 |
+| 7 | `g_ap_rms_cv` | 101/101 | −0.347 |
+| 8 | `g_jerk_mean_med` | 101/101 | +0.345 |
+| 9 | `g_acf_step_reg_max` | 101/101 | +0.344 |
+| 10 | `g_ml_rms_cv` | 101/101 | −0.342 |
+| 11 | `g_acf_step_reg_p90` | 101/101 | +0.337 |
+| 12 | `g_vm_std_med` | 101/101 | +0.333 |
+| 13 | `g_vm_std_cv` | 101/101 | −0.333 |
+| 14 | `g_enmo_p95_med` | 101/101 | +0.330 |
+| 15 | `g_ml_range_med` | 101/101 | +0.328 |
+| 16 | `g_enmo_mean_med` | 100/101 | +0.326 |
+| 17 | `g_signal_energy_med` | 100/101 | +0.324 |
+| 18 | `g_ml_range_cv` | 92/101 | −0.325 |
+| 19 | `g_vt_range_med` | 82/101 | +0.319 |
+| 20 | `g_ml_rms_med` | 79/101 | +0.319 |
 
 These 20 features + Demo(4) = 24 features → Ridge(α=20) → R²=0.452.
 
@@ -324,41 +325,53 @@ python analysis/reproduce_results_table_best_models.py    # ~1 min
 
 Clinic=Ridge(α=5), Home=Ridge(α=20).
 
-### Paper Tables (8 CSVs)
+### POMS/tables/ — paper-side tables
+
+Every table below is auto-mirrored from `results/paper_tables/` (or `results/`) into `POMS/tables/` so the LaTeX build always reads the up-to-date version.
+
+| File (in `POMS/tables/`) | Generating script | Description |
+|---|---|---|
+| `results_table_final.csv` | `analysis/reproduce_results_table_best_models.py` | 7-row results table with 95% bootstrap CIs (clinic + home) |
+| `model_comparison.csv` | `analysis/model_comparison_table.py` | 7 models × clinic/home, R²/MAE/r with CIs, worst→best |
+| `demographics_table.csv` | `analysis/generate_paper_tables.py` | Cohort demographics + clinical scores |
+| `feature_descriptions.csv` | `analysis/generate_paper_tables.py` | Feature categories and names |
+| `best_predictions.csv` | `analysis/generate_paper_tables.py` | Per-subject LOO predictions (best models) |
+| `error_analysis_by_cohort.csv` | `analysis/generate_paper_tables.py` | Error metrics by cohort (POMS/Healthy) |
+| `feature_correlations.csv` | `analysis/generate_paper_tables.py` | Spearman ρ with 6MWD by setting/cohort |
+| `ms_vs_healthy_features.csv` | `analysis/generate_paper_tables.py` | POMS vs Healthy differences (Cohen's d, BH-corrected) |
+| `clinical_corr_ms_only.csv` | `analysis/generate_paper_tables.py` | Clinic feature–clinical score correlations (MS only) |
+| `clinical_corr_ms_home.csv` | `analysis/generate_paper_tables.py` | Home feature–clinical score correlations (MS only) |
 
 ```bash
-python analysis/generate_paper_tables.py            # ~70 sec
-# Input:  feats/*.csv + SwayDemographics.xlsx
-# Output: results/paper_tables/*.csv + results/results_table_final.csv
+python analysis/reproduce_results_table_best_models.py  # results_table_final.csv (~1 min)
+python analysis/model_comparison_table.py               # model_comparison.csv (<1 min)
+python analysis/generate_paper_tables.py                # 8 tables (~70 sec)
 ```
 
-| Table | File | Description |
-|---|---|---|
-| 1 | `results/paper_tables/demographics_table.csv` | Demographic/clinical characteristics by cohort |
-| 2 | `results/paper_tables/feature_descriptions.csv` | Feature categories and names |
-| 3 | `results/paper_tables/best_predictions.csv` | Per-subject LOO predictions (best models) |
-| 4 | `results/paper_tables/error_analysis_by_cohort.csv` | Error metrics by cohort (All/POMS/Healthy) |
-| 5 | `results/paper_tables/feature_correlations.csv` | Spearman ρ with 6MWD by setting/cohort |
-| 6 | `results/paper_tables/ms_vs_healthy_features.csv` | POMS vs Healthy group differences (Cohen's d, BH-corrected) |
-| 7 | `results/paper_tables/clinical_corr_ms_only.csv` | Clinic feature–clinical score correlations (MS only) |
-| 8 | `results/paper_tables/clinical_corr_ms_home.csv` | Home feature–clinical score correlations (MS only) |
+### POMS/figures/ — paper-side figures
 
-### Paper Figures (6 PNGs)
+| File (in `POMS/figures/`) | Generating script | Description |
+|---|---|---|
+| `heatmap_feature_6mwd_corr_top10.png` | `analysis/generate_feature_6mwd_heatmaps.py` | Top-10 features × {All, POMS, Healthy}, clinic + home side-by-side (Spearman ρ) |
+| `heatmap_clinical_corr_clinic.png` (Fig 3) | `analysis/generate_clinical_corr_heatmaps.py` | Top-10 clinic features vs clinical scores (POMS only) |
+| `heatmap_clinical_corr_home.png` (Fig 4) | `analysis/generate_clinical_corr_heatmaps.py` | Top-10 home features (Bout+Act) vs clinical scores (POMS only) |
+| `bout_distribution_overview.png` | `analysis/generate_bout_distribution_figure.py` | 3-panel: violin+jitter cohort comparison / joint scatter / pooled survival |
+| `bout_duration_boxplots_per_subject.png` | `analysis/generate_bout_distribution_figure.py` | Per-subject box plots (POMS top, Healthy bottom), sorted by median — paper Supplementary S2 |
+| `fig_supp_wear_median_bout.png` | `analysis/generate_supp_wear_median_bout.py` | 2-panel: (a) 7-day device wear-time violin + MW-U test, (b) scatter of bout count × median bout duration sized by 6MWD — paper Supplementary S1 |
+| `heatmap_clinic_home_feature_corr.png` | `analysis/generate_clinic_home_corr_heatmap.py` | 5×5 clinic↔home Gait feature correlation — All/POMS/Healthy panels; shows p90 home column as the densest cluster (6MWT ≈ near-peak of free-living) |
+| `fig_model_comparison_mae.png` | `analysis/generate_model_comparison_barchart.py` | Grouped bar chart of MAE (m) per model, Clinic (blue) vs Home (red), error bars = σ-equivalent of 2000-bootstrap 95% CI |
+| `fig_overview_diagram.png` | *(manual — Figma/PPT export, not regenerated by any script)* | Study pipeline overview |
 
 ```bash
-python analysis/generate_paper_figures.py           # ~15 sec
-# Input:  feats/*.csv + SwayDemographics.xlsx
-# Output: results/paper_figures/*.png
+python analysis/generate_feature_6mwd_heatmaps.py      # Fig 2 (6MWD heatmap)
+python analysis/generate_clinical_corr_heatmaps.py     # Figs 3 & 4 (clinical scores)
+python analysis/generate_bout_distribution_figure.py   # bout overview + per-subject boxplots
+python analysis/generate_supp_wear_median_bout.py      # supplementary wear-time + median-bout scatter
+python analysis/generate_clinic_home_corr_heatmap.py   # 5×5 clinic↔home correlation heatmap
+python analysis/generate_model_comparison_barchart.py  # MAE bar chart per model
 ```
 
-| Figure | File | Description |
-|---|---|---|
-| 1 | `results/paper_figures/fig_predicted_vs_actual.png` | Predicted vs actual 6MWD scatter (home + clinic) |
-| 2 | `results/paper_figures/fig_bland_altman.png` | Bland-Altman agreement plots |
-| 3 | `results/paper_figures/fig_shap_importance.png` | SHAP feature importance (clinic + home) |
-| 4 | `results/paper_figures/heatmap_feature_6mwd_corr.png` | Feature–6MWD correlation heatmap by setting/cohort |
-| 5 | `results/paper_figures/heatmap_clinical_corr_clinic.png` | Clinic feature–clinical score correlations (POMS only) |
-| 6 | `results/paper_figures/heatmap_clinical_corr_home.png` | Home feature–clinical score correlations (POMS only) |
+`analysis/generate_paper_figures.py` (legacy) still emits `fig_predicted_vs_actual.png`, `fig_bland_altman.png`, `fig_shap_importance.png`, and the full-feature `heatmap_feature_6mwd_corr.png` / `heatmap_clinical_corr_*.png` into `results/paper_figures/`. Those older variants are superseded for the paper by the dedicated scripts listed above but are kept for reference.
 
 ### Full Combination Tables
 
@@ -380,9 +393,9 @@ All feature set combinations. Clinic=Ridge(α=5), Home=Ridge(α=20).
 | `feats/clinic_gait_features.csv` | `clinic/extract_gait_cwt_ws_features.py` | 11 + key | Clinic Gait from 6MWT |
 | `feats/clinic_cwt_features.csv` | `clinic/extract_gait_cwt_ws_features.py` | 28 + key | Clinic CWT from 6MWT |
 | `feats/clinic_walksway_features.csv` | `clinic/extract_gait_cwt_ws_features.py` | 12 + key | Clinic WalkSway from 6MWT |
-| `feats/clinic_perbout_features.csv` | `clinic/extract_perbout_features.py` | 152 + key | Clinic Bout+Act (60s windows + activity) |
+| `feats/clinic_perbout_features.csv` | `clinic/extract_perbout_features.py` | 151 + key | Clinic Bout+Act (60s windows + activity) |
 | `feats/home_walking_bouts.pkl` | `home/step1_detect_walking_bouts.py` | — | Walking bout indices per subject |
-| `feats/home_perbout_features.csv` | `home/step2_extract_features.py` | 152 + key | Home Bout+Act (all bouts + activity) |
+| `feats/home_perbout_features.csv` | `home/step2_extract_features.py` | 151 + key | Home Bout+Act (all bouts + activity) |
 | `feats/home_gait_features.csv` | `home/extract_gait_cwt_ws_features.py` | 66 + key | Home Gait (VM, Top-10 clean bouts) |
 | `feats/home_cwt_features.csv` | `home/extract_gait_cwt_ws_features.py` | 168 + key | Home CWT (VM, Top-10 clean bouts) |
 | `feats/home_walksway_features.csv` | `home/extract_gait_cwt_ws_features.py` | 72 + key | Home WalkSway (VM, Top-10 clean bouts) |
@@ -395,7 +408,7 @@ All feature set combinations. Clinic=Ridge(α=5), Home=Ridge(α=20).
 |---|---|
 | `home/step0_gt3x_to_npz.py` | GT3X → full recording NPZ (no filtering) |
 | `home/step1_detect_walking_bouts.py` | Walking bout detection + optional CSV saving |
-| `home/step2_extract_features.py` | Home Bout+Act feature extraction (152f) |
+| `home/step2_extract_features.py` | Home Bout+Act feature extraction (151f) |
 | `home/step3_predict.py` | Home Ridge-only prediction (R²=0.452, baseline) |
 | `home/step3_predict_all_models.py` | Home all models comparison (Ridge best, R²=0.452) |
 | `home/extract_gait_cwt_ws_features.py` | Home Gait/CWT/WalkSway features (VM-based) |
@@ -408,8 +421,16 @@ All feature set combinations. Clinic=Ridge(α=5), Home=Ridge(α=20).
 | `clinic/extract_perbout_features.py` | Clinic Bout+Act feature extraction (60s windows + activity) |
 | `analysis/reproduce_results_table_best_models.py` | Results table with best models (~1 min) |
 | `analysis/results_table_full.py` | Full combination tables (~13 min) |
-| `analysis/generate_paper_tables.py` | Generate all paper tables (8 CSVs, ~70 sec) |
-| `analysis/generate_paper_figures.py` | Generate all paper figures (6 PNGs, ~15 sec) |
+| `analysis/generate_paper_tables.py` | Paper tables → `POMS/tables/` (8 CSVs, ~70 sec) |
+| `analysis/reproduce_results_table_best_models.py` | `results_table_final.csv` with bootstrap CIs → `POMS/tables/` |
+| `analysis/model_comparison_table.py` | `model_comparison.csv` (7 models × clinic/home) → `POMS/tables/` |
+| `analysis/generate_feature_6mwd_heatmaps.py` | `heatmap_feature_6mwd_corr_top10.png` → `POMS/figures/` |
+| `analysis/generate_clinical_corr_heatmaps.py` | Figs 3 & 4 (clinic/home × clinical scores) → `POMS/figures/` |
+| `analysis/generate_bout_distribution_figure.py` | 2 home-bout figures (overview + per-subject boxplots) → `POMS/figures/` |
+| `analysis/generate_supp_wear_median_bout.py` | Supplementary figure (wear-time + median-bout scatter) → `POMS/figures/` |
+| `analysis/generate_clinic_home_corr_heatmap.py` | `heatmap_clinic_home_feature_corr.png` (5×5, All/POMS/Healthy) → `POMS/figures/` |
+| `analysis/generate_model_comparison_barchart.py` | `fig_model_comparison_mae.png` (MAE bar chart, 7 models × clinic/home) → `POMS/figures/` |
+| `analysis/generate_paper_figures.py` | Legacy paper figures → `results/paper_figures/` only |
 
 ---
 
@@ -420,7 +441,7 @@ All feature set combinations. Clinic=Ridge(α=5), Home=Ridge(α=20).
 ├── home/                           HOME PIPELINE
 │   ├── step0_gt3x_to_npz.py         GT3X → NPZ
 │   ├── step1_detect_walking_bouts.py Bout detection [--save-csv]
-│   ├── step2_extract_features.py     Bout+Act features (152f)
+│   ├── step2_extract_features.py     Bout+Act features (151f)
 │   ├── step3_predict.py              Ridge baseline (R²=0.452)
 │   ├── step3_predict_all_models.py   All models comparison
 │   ├── extract_gait_cwt_ws_features.py Gait/CWT/WS features (VM)
@@ -443,14 +464,14 @@ All feature set combinations. Clinic=Ridge(α=5), Home=Ridge(α=20).
 ├── feats/                          CACHED FEATURES (10 files)
 │   ├── target_6mwd.csv               Ground truth
 │   ├── home_walking_bouts.pkl        Walking bout indices
-│   ├── home_perbout_features.csv     Home Bout+Act (152f)
+│   ├── home_perbout_features.csv     Home Bout+Act (151f)
 │   ├── home_gait_features.csv        Home Gait (66f)
 │   ├── home_cwt_features.csv         Home CWT (168f)
 │   ├── home_walksway_features.csv    Home WalkSway (72f)
 │   ├── clinic_gait_features.csv      Clinic Gait (11f)
 │   ├── clinic_cwt_features.csv       Clinic CWT (28f)
 │   ├── clinic_walksway_features.csv  Clinic WalkSway (12f)
-│   └── clinic_perbout_features.csv   Clinic Bout+Act (152f)
+│   └── clinic_perbout_features.csv   Clinic Bout+Act (151f)
 │
 ├── results/                        RESULTS & PAPER OUTPUTS
 │   ├── results_table_best_models.csv  Results table (7 rows)

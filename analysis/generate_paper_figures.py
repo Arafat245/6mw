@@ -25,7 +25,15 @@ BASE = Path(__file__).parent.parent
 FEATS = BASE / 'feats'
 OUT = BASE / 'results' / 'paper_figures'
 OUT.mkdir(parents=True, exist_ok=True)
+POMS_FIGURES = BASE / 'POMS' / 'figures'  # paper-side copies (LaTeX-adjacent)
+POMS_FIGURES.mkdir(parents=True, exist_ok=True)
 FT2M = 0.3048
+
+
+def save_paper_figure(fig, filename, dpi=200):
+    """Write to both results/paper_figures/ and POMS/figures/ so the paper-side stays in sync."""
+    fig.savefig(OUT / filename, dpi=dpi, bbox_inches='tight')
+    fig.savefig(POMS_FIGURES / filename, dpi=dpi, bbox_inches='tight')
 
 CLR_HEALTHY = '#6BAED6'
 CLR_POMS = '#FC8D62'
@@ -189,7 +197,7 @@ for ax, pred_m, title, r2, mae, rho in [
     ax.set_xlim(lo, hi); ax.set_ylim(lo, hi)
 
 plt.tight_layout()
-fig.savefig(OUT / 'fig_predicted_vs_actual.png', dpi=200, bbox_inches='tight')
+save_paper_figure(fig, 'fig_predicted_vs_actual.png')
 plt.close()
 print(f"  Saved fig_predicted_vs_actual.png")
 
@@ -229,7 +237,7 @@ for ax, pred_m, title in [
     ax.legend(fontsize=7, loc='upper right')
 
 plt.tight_layout()
-fig.savefig(OUT / 'fig_bland_altman.png', dpi=200, bbox_inches='tight')
+save_paper_figure(fig, 'fig_bland_altman.png')
 plt.close()
 print(f"  Saved fig_bland_altman.png")
 
@@ -307,7 +315,7 @@ cbar.set_ticklabels(['Low', '', 'High'])
 cbar.set_label('Feature value', fontsize=9)
 
 plt.tight_layout()
-fig.savefig(OUT / 'fig_shap_importance.png', dpi=200, bbox_inches='tight')
+save_paper_figure(fig, 'fig_shap_importance.png')
 plt.close()
 print(f"  Saved fig_shap_importance.png")
 
@@ -400,7 +408,7 @@ cbar = fig.colorbar(im, ax=ax, shrink=0.8)
 cbar.set_label('Spearman \u03c1', fontsize=9)
 
 plt.tight_layout()
-fig.savefig(OUT / 'heatmap_feature_6mwd_corr.png', dpi=200, bbox_inches='tight')
+save_paper_figure(fig, 'heatmap_feature_6mwd_corr.png')
 plt.close()
 print(f"  Saved heatmap_feature_6mwd_corr.png ({n_feat} features)")
 
@@ -474,7 +482,7 @@ def clinical_heatmap(X, feat_names, feat_cats, score_names, title, fname, mask):
     cbar.set_label('Spearman \u03c1', fontsize=9)
 
     plt.tight_layout()
-    fig.savefig(OUT / fname, dpi=200, bbox_inches='tight')
+    save_paper_figure(fig, fname)
     plt.close()
     print(f"  Saved {fname} ({n_feat} features)")
 
@@ -489,11 +497,15 @@ clinical_heatmap(clinic_all_X, clinic_all_names, clinic_all_cats,
                  f'Clinic Wearable Feature - Clinical Score Correlations (POMS only, n={is_poms.sum()})',
                  'heatmap_clinical_corr_clinic.png', is_poms)
 
-# Home features (median aggregation)
-home_all_X = np.column_stack([h_gait_med, h_cwt_med, h_ws_med])
-home_all_names = h_gait_base + h_cwt_base + h_ws_base
-home_all_cats = (['Gait'] * len(h_gait_base) + ['CWT'] * len(h_cwt_base) +
-                 ['WalkSway'] * len(h_ws_base))
+# Home features: Bout + Act from the headline home_perbout_features.csv pool
+# (matches the 6MWD heatmap and ms_vs_healthy table conventions)
+h_bout_cols = [c for c in h_pb_cols if c.startswith('g_')]
+h_act_cols  = [c for c in h_pb_cols if c.startswith('act_')]
+h_bout_idx  = [h_pb_cols.index(c) for c in h_bout_cols]
+h_act_idx   = [h_pb_cols.index(c) for c in h_act_cols]
+home_all_X    = np.column_stack([h_pb[:, h_bout_idx], h_pb[:, h_act_idx]])
+home_all_names = h_bout_cols + h_act_cols
+home_all_cats  = ['Bout'] * len(h_bout_cols) + ['Act'] * len(h_act_cols)
 
 clinical_heatmap(home_all_X, home_all_names, home_all_cats,
                  ['EDSS', 'MFIS Total', 'MFIS Phys', 'MFIS Cog', 'MFIS Psych', 'BDI'],

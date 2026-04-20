@@ -1,8 +1,8 @@
-Feature Set,#f,Clinic R²,Clinic MAE (m),Clinic ρ,Home R²,Home MAE (m),Home ρ
+Feature Set,#f,Clinic R2,Clinic MAE (m),Clinic rho,Home R2,Home MAE (m),Home rho
 Gait,11,0.682,42.7,0.801,0.145,70.1,0.377
 CWT,28,0.357,60.2,0.601,0.15,67.9,0.462
 WalkSway,12,0.403,54.2,0.715,0.056,73.3,0.313
 Demo,4,0.362,60.8,0.595,0.362,60.8,0.595
-PerBout-Top20,20,0.604,46.0,0.778,0.184,67.5,0.451
-PerBout-Top20+Demo,24,0.675,40.3,0.841,0.454,55.5,0.659
+Bout+Act-Top20,20,0.63,44.3,0.802,0.181,67.3,0.453
+Bout+Act-Top20+Demo,24,0.688,39.6,0.847,0.451,56.0,0.651
 Gait+CWT+WS+Demo,55,0.806,31.2,0.88,0.281,63.8,0.543

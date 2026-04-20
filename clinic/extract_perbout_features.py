@@ -2,11 +2,11 @@
 """
 Extract clinic Bout+Act features:
   - Split 6MWT into 60s windows, extract 20 per-bout features per window,
-    aggregate across windows (120 gait + 3 meta = 123 bout-aggregated features).
+    aggregate across windows (120 gait + 2 meta = 122 bout-aggregated features).
   - Extract 29 activity features from the full trimmed 6MWT recording.
 
 Input:  csv_raw2/*.csv
-Output: feats/clinic_perbout_features.csv (152 features x 101 subjects)
+Output: feats/clinic_perbout_features.csv (151 features x 101 subjects)
 
 Run:  python clinic/extract_perbout_features.py
 """
@@ -60,7 +60,7 @@ def aggregate_bout_feats(bout_feats):
     row['g_total_walk_sec'] = sum(bf.get('duration_sec', 0) for bf in bout_feats)
     durs = [bf.get('duration_sec', 0) for bf in bout_feats]
     row['g_mean_bout_dur'] = np.mean(durs)
-    row['g_bout_dur_cv'] = np.std(durs) / (np.mean(durs) + 1e-12) if np.mean(durs) > 0 else 0
+    # g_bout_dur_cv removed — duplicate of g_duration_sec_cv (VIF = 10^12).
     return row
 
 

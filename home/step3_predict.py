@@ -38,7 +38,7 @@ if __name__ == '__main__':
     y = subj_df['sixmwd'].values.astype(float)
     n = len(subj_df)
 
-    # Load 153 accel features
+    # Load 151 accel features
     feat_df = pd.read_csv(FEATS_DIR / 'home_perbout_features.csv')
     assert list(subj_df['key']) == list(feat_df['key']), "Key mismatch between _subjects.csv and features"
     accel_cols = [c for c in feat_df.columns if c != 'key']

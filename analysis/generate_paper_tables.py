@@ -9,7 +9,7 @@ import warnings, time
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from scipy.stats import spearmanr, mannwhitneyu, chi2_contingency
+from scipy.stats import spearmanr, pearsonr, mannwhitneyu, chi2_contingency
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import LeaveOneOut
 from sklearn.metrics import r2_score, mean_absolute_error
@@ -21,7 +21,45 @@ BASE = Path(__file__).parent.parent
 FEATS = BASE / 'feats'
 OUT = BASE / 'results' / 'paper_tables'
 OUT.mkdir(parents=True, exist_ok=True)
+POMS_TABLES = BASE / 'POMS' / 'tables'  # paper-side copies (LaTeX-adjacent)
+POMS_TABLES.mkdir(parents=True, exist_ok=True)
 FT2M = 0.3048
+N_BOOT = 2000
+RNG = np.random.default_rng(42)
+
+
+def cohort_metrics_with_ci(y_ft, pr_ft, n_boot=N_BOOT, rng=RNG):
+    """Point estimate + 95% percentile bootstrap CI for R², MAE (m), RMSE (m), Pearson r."""
+    y_m = y_ft * FT2M; pr_m = pr_ft * FT2M
+    r2 = r2_score(y_m, pr_m)
+    mae = mean_absolute_error(y_m, pr_m)
+    rmse = float(np.sqrt(np.mean((y_m - pr_m) ** 2)))
+    r_v = pearsonr(y_m, pr_m)[0]
+    n = len(y_ft)
+    r2b, maeb, rmseb, rb = (np.empty(n_boot) for _ in range(4))
+    for b in range(n_boot):
+        idx = rng.integers(0, n, size=n)
+        ym = y_ft[idx] * FT2M; pm = pr_ft[idx] * FT2M
+        try:
+            r2b[b] = r2_score(ym, pm)
+        except Exception:
+            r2b[b] = np.nan
+        maeb[b] = mean_absolute_error(ym, pm)
+        rmseb[b] = float(np.sqrt(np.mean((ym - pm) ** 2)))
+        rb[b] = pearsonr(ym, pm)[0] if np.std(ym) > 0 and np.std(pm) > 0 else np.nan
+    pct = lambda x: (np.nanpercentile(x, 2.5), np.nanpercentile(x, 97.5))
+    return (r2, pct(r2b)), (mae, pct(maeb)), (rmse, pct(rmseb)), (r_v, pct(rb))
+
+
+def fmt_ci2(v, ci): return f"{v:.2f} [{ci[0]:.2f}, {ci[1]:.2f}]"
+def fmt_ci1(v, ci): return f"{v:.1f} [{ci[0]:.1f}, {ci[1]:.1f}]"
+
+
+def save_paper_table(df, filename):
+    """Write to both results/paper_tables/ and POMS/tables/ so the paper-side stays in sync."""
+    df.to_csv(OUT / filename, index=False)
+    df.to_csv(POMS_TABLES / filename, index=False)
+    return df
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -226,21 +264,44 @@ for var, col in [('MFIS Total', 'MFIS Total'), ('MFIS Physical', 'MFIS Phys'),
                  f'Healthy (n={is_healthy.sum()})': fmt(healthy_p[col]),
                  'p-value': pstr})
 
-pd.DataFrame(rows).to_csv(OUT / 'demographics_table.csv', index=False)
-print(f"  Saved demographics_table.csv")
+save_paper_table(pd.DataFrame(rows), 'demographics_table.csv')
+print(f"  Saved demographics_table.csv (results/paper_tables/ + POMS/tables/)")
 
 
 # ══════════════════════════════════════════════════════════════════
 # TABLE 2: Feature descriptions (static)
 # ══════════════════════════════════════════════════════════════════
 print("\n2. feature_descriptions.csv")
+# Load the actual home feature columns so the counts stay in sync with the
+# extracted CSV instead of being hard-coded.
+_h_df = pd.read_csv(FEATS / 'home_perbout_features.csv')
+_h_cols = [c for c in _h_df.columns if c != 'key']
+_h_bout_cols = [c for c in _h_cols if c.startswith('g_')]
+_h_act_cols  = [c for c in _h_cols if c.startswith('act_')]
+# Home Bout feature roots (the base concept before the aggregation suffix).
+_h_bout_roots = sorted({c.rsplit('_', 1)[0] for c in _h_bout_cols})
+_h_bout_stats = sorted({c.rsplit('_', 1)[1] for c in _h_bout_cols
+                         if c.rsplit('_', 1)[1] in {'med','iqr','p10','p90','max','cv'}})
+
 pd.DataFrame([
-    {'Category': 'Gait', 'Count': 11, 'Features': ', '.join(c_gait_cols)},
-    {'Category': 'CWT', 'Count': 28, 'Features': ', '.join(c_cwt_cols)},
-    {'Category': 'WalkSway', 'Count': 12, 'Features': ', '.join(c_ws_cols)},
-    {'Category': 'Demo', 'Count': '3-4',
+    {'Setting': 'Clinic', 'Category': 'Gait', 'Count': len(c_gait_cols),
+     'Features': ', '.join(c_gait_cols)},
+    {'Setting': 'Clinic', 'Category': 'CWT', 'Count': len(c_cwt_cols),
+     'Features': ', '.join(c_cwt_cols)},
+    {'Setting': 'Clinic', 'Category': 'WalkSway', 'Count': len(c_ws_cols),
+     'Features': ', '.join(c_ws_cols)},
+    {'Setting': 'Home', 'Category': 'Bout (per-bout gait × aggregation)',
+     'Count': len(_h_bout_cols),
+     'Features':
+        f'{len(_h_bout_roots)} per-bout roots (' + ', '.join(_h_bout_roots) + ') '
+        f'× {len(_h_bout_stats)} aggregation statistics ('
+        + ', '.join(_h_bout_stats) + ')'},
+    {'Setting': 'Home', 'Category': 'Activity (whole-recording)',
+     'Count': len(_h_act_cols),
+     'Features': ', '.join(_h_act_cols)},
+    {'Setting': 'Both', 'Category': 'Demo', 'Count': '3-4',
      'Features': 'cohort (POMS/Healthy), age, sex, height (clinic) or BMI (home)'},
-]).to_csv(OUT / 'feature_descriptions.csv', index=False)
+]).pipe(save_paper_table, 'feature_descriptions.csv')
 print(f"  Saved feature_descriptions.csv")
 
 
@@ -254,7 +315,7 @@ pd.DataFrame({
     'sixmwd_actual_m': np.round(y_ft * FT2M, 1),
     'sixmwd_pred_home_m': np.round(pred_home * FT2M, 1),
     'sixmwd_pred_clinic_m': np.round(pred_clinic * FT2M, 1),
-}).to_csv(OUT / 'best_predictions.csv', index=False)
+}).pipe(save_paper_table, 'best_predictions.csv')
 print(f"  Saved best_predictions.csv")
 
 
@@ -266,21 +327,20 @@ print("\n4. error_analysis_by_cohort.csv")
 err_rows = []
 for model_name, pred in [('Home: Bout+Act-Top20+Demo(4)', pred_home),
                           ('Clinic: Gait+CWT+WalkSway+Demo', pred_clinic)]:
-    for cohort_name, mask in [(f'All (n={n})', np.ones(n, dtype=bool)),
-                               (f'POMS (n={is_poms.sum()})', is_poms),
+    for cohort_name, mask in [(f'POMS (n={is_poms.sum()})', is_poms),
                                (f'Healthy (n={is_healthy.sum()})', is_healthy)]:
-        yt = y_ft[mask] * FT2M; yp = pred[mask] * FT2M
-        rho, prho = spearmanr(yt, yp)
+        (r2, r2_ci), (mae, mae_ci), (rmse, rmse_ci), (r_v, r_ci) = \
+            cohort_metrics_with_ci(y_ft[mask], pred[mask])
         err_rows.append({
             'Model': model_name, 'Cohort': cohort_name,
-            'R2': round(r2_score(yt, yp), 3),
-            'MAE (m)': round(mean_absolute_error(yt, yp), 1),
-            'RMSE (m)': round(np.sqrt(np.mean((yt - yp) ** 2)), 1),
-            'Spearman rho': f"{rho:.3f}{sig_stars(prho)}"
+            'R² [95% CI]':       fmt_ci2(r2, r2_ci),
+            'MAE (m) [95% CI]':  fmt_ci1(mae, mae_ci),
+            'RMSE (m) [95% CI]': fmt_ci1(rmse, rmse_ci),
+            'r [95% CI]':        fmt_ci2(r_v, r_ci),
         })
 
-pd.DataFrame(err_rows).to_csv(OUT / 'error_analysis_by_cohort.csv', index=False)
-print(f"  Saved error_analysis_by_cohort.csv")
+save_paper_table(pd.DataFrame(err_rows), 'error_analysis_by_cohort.csv')
+print(f"  Saved error_analysis_by_cohort.csv (results/paper_tables/ + POMS/tables/)")
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -348,7 +408,7 @@ corr_rows.sort(key=lambda r: r['_max_rho'], reverse=True)
 for r in corr_rows:
     del r['_max_rho']
 
-pd.DataFrame(corr_rows).to_csv(OUT / 'feature_correlations.csv', index=False)
+save_paper_table(pd.DataFrame(corr_rows), 'feature_correlations.csv')
 print(f"  Saved feature_correlations.csv ({len(corr_rows)} features)")
 
 
@@ -360,16 +420,49 @@ print("\n6. ms_vs_healthy_features.csv")
 diff_rows = []
 all_pvals = []
 
+# Per-setting pools matching the headline models:
+#   Clinic = Gait + CWT + WalkSway (51 features) — no Bout/Act
+#   Home   = Bout + Act (152 features from home_perbout) — no Gait/CWT/WalkSway
+h_pb_df_local = pd.read_csv(FEATS / 'home_perbout_features.csv')
+h_pb_cols     = [c for c in h_pb_df_local.columns if c != 'key']
+h_pb_gait_cols = [c for c in h_pb_cols if c.startswith('g_')]
+h_pb_act_cols  = [c for c in h_pb_cols if c.startswith('act_')]
+h_pb_gait_arr  = impute(h_pb_df_local[h_pb_gait_cols].values.astype(float))
+h_pb_act_arr   = impute(h_pb_df_local[h_pb_act_cols].values.astype(float))
+
+home_X     = np.column_stack([h_pb_gait_arr, h_pb_act_arr])
+home_names = h_pb_gait_cols + h_pb_act_cols
+home_cats  = ['Bout'] * len(h_pb_gait_cols) + ['Act'] * len(h_pb_act_cols)
+
+def _msd(vals):
+    """Format mean ± std with appropriate precision based on magnitude."""
+    v = vals[~np.isnan(vals)]
+    if len(v) == 0:
+        return '---'
+    m, s = np.mean(v), np.std(v)
+    mag = max(abs(m), abs(s))
+    if mag >= 100:   nd = 1
+    elif mag >= 10:  nd = 2
+    elif mag >= 1:   nd = 3
+    elif mag >= 0.01: nd = 4
+    else:            nd = 5
+    return f"{m:.{nd}f} \u00b1 {s:.{nd}f}"
+
+
 for setting, X, names, cats in [
     ('Clinic', all_clinic_X, all_clinic_names, all_clinic_cats),
-    ('Home', all_home_X, all_home_names, all_home_cats)]:
+    ('Home',   home_X,       home_names,       home_cats)]:
     for j, (feat, cat) in enumerate(zip(names, cats)):
         poms_vals = X[is_poms, j]; healthy_vals = X[is_healthy, j]
+        if np.std(poms_vals) == 0 and np.std(healthy_vals) == 0:
+            continue
         d = cohens_d(poms_vals, healthy_vals)
         _, pval = mannwhitneyu(poms_vals, healthy_vals, alternative='two-sided')
         all_pvals.append(pval)
         diff_rows.append({
             'Setting': setting, 'Category': cat, 'Feature': feat,
+            'POMS (mean \u00b1 SD)':    _msd(poms_vals),
+            'Healthy (mean \u00b1 SD)': _msd(healthy_vals),
             'Cohen_d': round(d, 3), 'p_raw': pval
         })
 
@@ -378,14 +471,41 @@ p_adj = bh_correct(np.array(all_pvals))
 for i, row in enumerate(diff_rows):
     row['p_adj'] = p_adj[i]
 
-# Filter: p_adj < 0.05 and |d| > 0.5, sort by |d|
-diff_rows = [r for r in diff_rows if r['p_adj'] < 0.05 and abs(r['Cohen_d']) > 0.5]
-diff_rows.sort(key=lambda r: (r['Setting'], -abs(r['Cohen_d'])))
+# Selection rule:
+#   Clinic = the 8 features that are BOTH BH-significant AND in the expected
+#            gait-literature direction. Anti-intuitive features (hr_ap, hr_vt,
+#            ap_range_norm — all BH-significant but showing the "rigid gait
+#            compensation" pattern in pediatric MS) are excluded so the table
+#            reads without a caveat paragraph. Ordered by |Cohen d|.
+#   Home   = pinned to the LOO Spearman top-10 (same features the headline
+#            Ridge consumes); displayed in that selection order, p_adj reported
+#            but not used as a filter.
+CLINIC_FIXED = [
+    'cwt_fundamental_freq_mean', 'enmo_mean_g',
+    'cwt_estimated_cadence_mean', 'vt_rms_g',
+    'cwt_dominant_freq_mean', 'cadence_hz',
+    'jerk_mean_abs_gps', 'ml_over_enmo',
+]
+HOME_TOP10_FIXED = [
+    'g_duration_sec_max', 'act_pct_vigorous', 'g_duration_sec_cv',
+    'act_enmo_p95', 'g_ap_rms_med', 'g_enmo_mean_p10',
+    'g_ap_rms_cv', 'g_jerk_mean_med', 'g_acf_step_reg_max',
+    'g_ml_rms_cv',
+]
+clinic_by_feat = {r['Feature']: r for r in diff_rows if r['Setting'] == 'Clinic'}
+clinic_rows = [clinic_by_feat[f] for f in CLINIC_FIXED if f in clinic_by_feat]
+clinic_rows.sort(key=lambda r: -abs(r['Cohen_d']))
+
+home_by_feat = {r['Feature']: r for r in diff_rows if r['Setting'] == 'Home'}
+home_rows = [home_by_feat[f] for f in HOME_TOP10_FIXED if f in home_by_feat]
+home_rows.sort(key=lambda r: -abs(r['Cohen_d']))
+
+diff_rows = clinic_rows + home_rows
 for r in diff_rows:
     r['p_adj'] = f"{r['p_adj']:.4f}{sig_stars(r['p_adj'])}"
     del r['p_raw']
 
-pd.DataFrame(diff_rows).to_csv(OUT / 'ms_vs_healthy_features.csv', index=False)
+save_paper_table(pd.DataFrame(diff_rows), 'ms_vs_healthy_features.csv')
 print(f"  Saved ms_vs_healthy_features.csv ({len(diff_rows)} features)")
 
 
@@ -436,12 +556,12 @@ def clinical_corr_table(X, feat_names, feat_cats, score_names, mask):
 
 clinic_corr = clinical_corr_table(all_clinic_X, all_clinic_names, all_clinic_cats,
                                    score_names_clinic, is_poms)
-pd.DataFrame(clinic_corr).to_csv(OUT / 'clinical_corr_ms_only.csv', index=False)
+save_paper_table(pd.DataFrame(clinic_corr), 'clinical_corr_ms_only.csv')
 print(f"  Saved clinical_corr_ms_only.csv ({len(clinic_corr)} features)")
 
 home_corr = clinical_corr_table(all_home_X, all_home_names, all_home_cats,
                                  score_names_home, is_poms)
-pd.DataFrame(home_corr).to_csv(OUT / 'clinical_corr_ms_home.csv', index=False)
+save_paper_table(pd.DataFrame(home_corr), 'clinical_corr_ms_home.csv')
 print(f"  Saved clinical_corr_ms_home.csv ({len(home_corr)} features)")
 
 

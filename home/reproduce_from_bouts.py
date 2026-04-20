@@ -260,7 +260,7 @@ if __name__ == '__main__':
             row['g_total_walk_sec'] = sum(bf.get('duration_sec', 0) for bf in bout_feats)
             durs = [bf.get('duration_sec', 0) for bf in bout_feats]
             row['g_mean_bout_dur'] = np.mean(durs)
-            row['g_bout_dur_cv'] = np.std(durs) / (np.mean(durs) + 1e-12) if np.mean(durs) > 0 else 0
+            # g_bout_dur_cv removed — duplicate of g_duration_sec_cv
 
         # Activity features from full NPZ
         npz_path = NPZ_DIR / f"{r['key']}.npz"
