@@ -327,48 +327,52 @@ Clinic=Ridge(α=5), Home=Ridge(α=20).
 
 ### POMS/tables/ — paper-side tables
 
-Every table below is auto-mirrored from `results/paper_tables/` (or `results/`) into `POMS/tables/` so the LaTeX build always reads the up-to-date version.
+Every table below is auto-mirrored from `results/paper_tables/` (or `results/`) into `POMS/tables/` so the LaTeX build always reads the up-to-date version. The **Paper** column maps each CSV to the numbered table in `POMS/main.tex` (Tables 1–5 are rendered; the remaining CSVs are the underlying data backing paper figures).
 
-| File (in `POMS/tables/`) | Generating script | Description |
-|---|---|---|
-| `results_table_final.csv` | `analysis/reproduce_results_table_best_models.py` | 7-row results table with 95% bootstrap CIs (clinic + home) |
-| `model_comparison.csv` | `analysis/model_comparison_table.py` | 7 models × clinic/home, R²/MAE/r with CIs, worst→best |
-| `demographics_table.csv` | `analysis/generate_paper_tables.py` | Cohort demographics + clinical scores |
-| `feature_descriptions.csv` | `analysis/generate_paper_tables.py` | Feature categories and names |
-| `best_predictions.csv` | `analysis/generate_paper_tables.py` | Per-subject LOO predictions (best models) |
-| `error_analysis_by_cohort.csv` | `analysis/generate_paper_tables.py` | Error metrics by cohort (POMS/Healthy) |
-| `feature_correlations.csv` | `analysis/generate_paper_tables.py` | Spearman ρ with 6MWD by setting/cohort |
-| `ms_vs_healthy_features.csv` | `analysis/generate_paper_tables.py` | POMS vs Healthy differences (Cohen's d, BH-corrected) |
-| `clinical_corr_ms_only.csv` | `analysis/generate_paper_tables.py` | Clinic feature–clinical score correlations (MS only) |
-| `clinical_corr_ms_home.csv` | `analysis/generate_paper_tables.py` | Home feature–clinical score correlations (MS only) |
+| File (in `POMS/tables/`) | Paper | Generating script | Description |
+|---|---|---|---|
+| `demographics_table.csv` | Table 1 | `analysis/generate_paper_tables.py` | Cohort demographics + clinical scores |
+| `feature_descriptions.csv` | Table 2 | `analysis/generate_paper_tables.py` | Feature categories and names |
+| `ms_vs_healthy_features.csv` | Table 3 | `analysis/generate_paper_tables.py` | POMS vs Healthy differences (Cohen's d, BH-corrected) |
+| `results_table_final.csv` | Table 4 | `analysis/reproduce_results_table_best_models.py` | 7-row results table with 95% bootstrap CIs (clinic + home) |
+| `error_analysis_by_cohort.csv` | Table 5 | `analysis/generate_paper_tables.py` | Per-cohort prediction performance (POMS/Healthy) |
+| `model_comparison.csv` | data for Fig 7 | `analysis/model_comparison_table.py` | 7 models × clinic/home, R²/MAE/r with CIs, worst→best |
+| `feature_correlations.csv` | data for Fig 3 | `analysis/generate_paper_tables.py` | Spearman ρ with 6MWD by setting/cohort |
+| `clinical_corr_ms_only.csv` | data for Fig 5 | `analysis/generate_paper_tables.py` | Clinic feature–clinical score correlations (MS only) |
+| `clinical_corr_ms_home.csv` | data for Fig 6 | `analysis/generate_paper_tables.py` | Home feature–clinical score correlations (MS only) |
+| `best_predictions.csv` | supplementary | `analysis/generate_paper_tables.py` | Per-subject LOO predictions (best models) |
 
 ```bash
-python analysis/reproduce_results_table_best_models.py  # results_table_final.csv (~1 min)
+python analysis/generate_paper_tables.py                # Tables 1-3, 5 + supporting CSVs (~70 sec)
+python analysis/reproduce_results_table_best_models.py  # Table 4 — results_table_final.csv (~1 min)
 python analysis/model_comparison_table.py               # model_comparison.csv (<1 min)
-python analysis/generate_paper_tables.py                # 8 tables (~70 sec)
 ```
 
 ### POMS/figures/ — paper-side figures
 
-| File (in `POMS/figures/`) | Generating script | Description |
-|---|---|---|
-| `heatmap_feature_6mwd_corr_top10.png` | `analysis/generate_feature_6mwd_heatmaps.py` | Top-10 features × {All, POMS, Healthy}, clinic + home side-by-side (Spearman ρ) |
-| `heatmap_clinical_corr_clinic.png` (Fig 3) | `analysis/generate_clinical_corr_heatmaps.py` | Top-10 clinic features vs clinical scores (POMS only) |
-| `heatmap_clinical_corr_home.png` (Fig 4) | `analysis/generate_clinical_corr_heatmaps.py` | Top-10 home features (Bout+Act) vs clinical scores (POMS only) |
-| `bout_distribution_overview.png` | `analysis/generate_bout_distribution_figure.py` | 3-panel: violin+jitter cohort comparison / joint scatter / pooled survival |
-| `bout_duration_boxplots_per_subject.png` | `analysis/generate_bout_distribution_figure.py` | Per-subject box plots (POMS top, Healthy bottom), sorted by median — paper Supplementary S2 |
-| `fig_supp_wear_median_bout.png` | `analysis/generate_supp_wear_median_bout.py` | 2-panel: (a) 7-day device wear-time violin + MW-U test, (b) scatter of bout count × median bout duration sized by 6MWD — paper Supplementary S1 |
-| `heatmap_clinic_home_feature_corr.png` | `analysis/generate_clinic_home_corr_heatmap.py` | 5×5 clinic↔home Gait feature correlation — All/POMS/Healthy panels; shows p90 home column as the densest cluster (6MWT ≈ near-peak of free-living) |
-| `fig_model_comparison_mae.png` | `analysis/generate_model_comparison_barchart.py` | Grouped bar chart of MAE (m) per model, Clinic (blue) vs Home (red), error bars = σ-equivalent of 2000-bootstrap 95% CI |
-| `fig_overview_diagram.png` | *(manual — Figma/PPT export, not regenerated by any script)* | Study pipeline overview |
+The **Paper** column maps each PNG to the numbered figure in `POMS/main.tex` (Figs 1–7 main text; S1–S3 supplementary).
+
+| File (in `POMS/figures/`) | Paper | Generating script | Description |
+|---|---|---|---|
+| `fig_overview_diagram.png` | Fig 1 | *manual (Figma/PPT export, not regenerated by any script)* | Study pipeline overview |
+| `bout_distribution_overview.png` | Fig 2 | `analysis/generate_bout_distribution_figure.py` | 3-panel: longest-bout violin / 90th-pct ENMO intensity / pooled survival with bootstrap CI |
+| `heatmap_feature_6mwd_corr_top10.png` | Fig 3 | `analysis/generate_feature_6mwd_heatmaps.py` | Top-10 features × {All, POMS, Healthy}, clinic + home side-by-side (Spearman ρ) |
+| `heatmap_clinic_home_feature_corr.png` | Fig 4 | `analysis/generate_clinic_home_corr_heatmap.py` | 5×5 clinic↔home Gait feature correlation — All/POMS/Healthy panels |
+| `heatmap_clinical_corr_clinic.png` | Fig 5 | `analysis/generate_clinical_corr_heatmaps.py` | Top-10 clinic features vs clinical scores (POMS only) |
+| `heatmap_clinical_corr_home.png` | Fig 6 | `analysis/generate_clinical_corr_heatmaps.py` | Top-10 home features (Bout+Act) vs clinical scores (POMS only) |
+| `fig_model_comparison_mae.png` | Fig 7 | `analysis/generate_model_comparison_barchart.py` | Grouped bar chart of MAE (m) per model, Clinic vs Home, error bars = σ-equivalent of 2000-bootstrap 95% CI |
+| `fig_supp_wear_median_bout.png` | Fig S1 | `analysis/generate_supp_wear_median_bout.py` | Supplementary: 7-day device wear-time violin + per-subject median-bout-duration violin by cohort |
+| `bout_duration_boxplots_per_subject.png` | Fig S2 | `analysis/generate_bout_distribution_figure.py` | Supplementary: per-subject box plots (POMS top, Healthy bottom), sorted by median |
+| `fig_supp_bout_threshold_sensitivity.png` | Fig S3 | `analysis/generate_bout_threshold_sensitivity.py` | Supplementary: home MAE vs minimum bout-duration threshold (10/30/60/120/240 s), 95% bootstrap CIs |
 
 ```bash
-python analysis/generate_feature_6mwd_heatmaps.py      # Fig 2 (6MWD heatmap)
-python analysis/generate_clinical_corr_heatmaps.py     # Figs 3 & 4 (clinical scores)
-python analysis/generate_bout_distribution_figure.py   # bout overview + per-subject boxplots
-python analysis/generate_supp_wear_median_bout.py      # supplementary wear-time + median-bout scatter
-python analysis/generate_clinic_home_corr_heatmap.py   # 5×5 clinic↔home correlation heatmap
-python analysis/generate_model_comparison_barchart.py  # MAE bar chart per model
+python analysis/generate_bout_distribution_figure.py   # Fig 2 + Fig S2
+python analysis/generate_feature_6mwd_heatmaps.py      # Fig 3
+python analysis/generate_clinic_home_corr_heatmap.py   # Fig 4
+python analysis/generate_clinical_corr_heatmaps.py     # Figs 5 & 6
+python analysis/generate_model_comparison_barchart.py  # Fig 7
+python analysis/generate_supp_wear_median_bout.py      # Fig S1
+python analysis/generate_bout_threshold_sensitivity.py # Fig S3
 ```
 
 `analysis/generate_paper_figures.py` (legacy) still emits `fig_predicted_vs_actual.png`, `fig_bland_altman.png`, `fig_shap_importance.png`, and the full-feature `heatmap_feature_6mwd_corr.png` / `heatmap_clinical_corr_*.png` into `results/paper_figures/`. Those older variants are superseded for the paper by the dedicated scripts listed above but are kept for reference.
@@ -426,10 +430,11 @@ All feature set combinations. Clinic=Ridge(α=5), Home=Ridge(α=20).
 | `analysis/model_comparison_table.py` | `model_comparison.csv` (7 models × clinic/home) → `POMS/tables/` |
 | `analysis/generate_feature_6mwd_heatmaps.py` | `heatmap_feature_6mwd_corr_top10.png` → `POMS/figures/` |
 | `analysis/generate_clinical_corr_heatmaps.py` | Figs 3 & 4 (clinic/home × clinical scores) → `POMS/figures/` |
-| `analysis/generate_bout_distribution_figure.py` | 2 home-bout figures (overview + per-subject boxplots) → `POMS/figures/` |
-| `analysis/generate_supp_wear_median_bout.py` | Supplementary figure (wear-time + median-bout scatter) → `POMS/figures/` |
-| `analysis/generate_clinic_home_corr_heatmap.py` | `heatmap_clinic_home_feature_corr.png` (5×5, All/POMS/Healthy) → `POMS/figures/` |
-| `analysis/generate_model_comparison_barchart.py` | `fig_model_comparison_mae.png` (MAE bar chart, 7 models × clinic/home) → `POMS/figures/` |
+| `analysis/generate_bout_distribution_figure.py` | Fig 2 + Fig S2 (bout overview + per-subject boxplots) → `POMS/figures/` |
+| `analysis/generate_clinic_home_corr_heatmap.py` | Fig 4 — `heatmap_clinic_home_feature_corr.png` (5×5, All/POMS/Healthy) → `POMS/figures/` |
+| `analysis/generate_model_comparison_barchart.py` | Fig 7 — `fig_model_comparison_mae.png` (MAE bar chart, 7 models × clinic/home) → `POMS/figures/` |
+| `analysis/generate_supp_wear_median_bout.py` | Fig S1 — supplementary wear-time + median-bout-duration violins → `POMS/figures/` |
+| `analysis/generate_bout_threshold_sensitivity.py` | Fig S3 — MAE vs minimum bout-duration threshold (10/30/60/120/240 s) → `POMS/figures/` |
 | `analysis/generate_paper_figures.py` | Legacy paper figures → `results/paper_figures/` only |
 
 ---
@@ -520,3 +525,171 @@ All feature set combinations. Clinic=Ridge(α=5), Home=Ridge(α=20).
 - Ridge α and model hyperparameters are fixed per feature set (no search on test data)
 - Imputation uses column median (negligible leakage from test subject)
 - Clinic and home pipelines are fully separate
+
+---
+
+## Appendix: Longitudinal Δ6MWD Classification (exploratory, not in paper)
+
+One-shot experiment adapting the ALS_Long binary-decline design (Sinha et al., `ALS_Long/README.md`) to this cohort. Goal: from **baseline home features**, predict whether a subject's next clinic 6MWD will be **better / zero / worse** than baseline.
+
+### Task
+- **Pair** = (baseline visit, later clinic visit) for subjects with ≥2 6MWTs.
+- **Label (3-class):** `better` if Δ6MWD ≥ +MDC₉₅, `worse` if Δ6MWD ≤ −MDC₉₅, else `zero`.
+- **MDC₉₅ = 30 m** — adult-MS literature value (Learmonth et al. 2013). Our cohort has no ≤21-day repeat 6MWTs, so the ALS_Long empirical-MDC route (`compute_mdc.py`) is not reproducible here.
+
+### Dataset
+Built from `TimeSheet6MW.xlsx` (Base, V1–V4 visits). Only MS subjects (C cohort is single-visit in this file). M22 and M44 excluded per project convention.
+
+| | Value |
+|---|---|
+| Pairs | **40** |
+| Subjects | **21** (MS only) |
+| Δt range | 0.9–8.8 years (median **4.9 yrs**) |
+| Class balance | better **40 %** (16) · zero **28 %** (11) · worse **32 %** (13) |
+
+### Features (156 total, fixed per pair)
+- **151 home Bout+Act** features from `feats/home_perbout_features.csv`, taken at baseline (home accelerometer was worn once, at/near the Base visit)
+- **4 Demographics** (cohort_POMS, Age, Sex, BMI)
+- **1 forecast horizon** `dt_years`
+
+### Cross-validation
+**LeaveOneGroupOut by subject.** All pairs from a given subject are held out together (20 train / 1 test subject per fold). StratifiedGroupKFold is not usable at n=40. StandardScaler fit inside each fold.
+
+### Models
+Following ALS_Long's 5-model sweep plus a Majority baseline: LogReg L1, LinearSVM, RandomForest, XGBoost, KNN. All use `class_weight="balanced"` where supported.
+
+### Results — 3-class (better / zero / worse)
+
+| Model | Acc | **BalAcc** | F1-macro | AUC (macro OvR) |
+|---|---|---|---|---|
+| Majority baseline | 0.400 | 0.333 | 0.190 | — |
+| **LogReg_L1** | 0.350 | **0.334** | **0.302** | 0.476 |
+| XGBoost | 0.325 | 0.304 | 0.295 | 0.407 |
+| KNN | 0.275 | 0.258 | 0.255 | 0.349 |
+| LinearSVM | 0.200 | 0.176 | 0.154 | 0.297 |
+| RandomForest | 0.200 | 0.167 | 0.113 | 0.314 |
+
+Best model confusion (LogReg_L1):
+
+|  | pred worse | pred zero | pred better |
+|---|---|---|---|
+| **true worse** (13) | 1 | 2 | 10 |
+| **true zero** (11) | 1 | 4 | 6 |
+| **true better** (16) | 0 | 7 | 9 |
+
+Per-class (LogReg_L1): `worse` P=0.50, R=0.08 · `zero` P=0.31, R=0.36 · `better` P=0.36, R=0.56.
+
+### Results — 2-class (worse vs not-worse, mirrors ALS_Long headline)
+
+| Model | Acc | **BalAcc** | F1-macro | **AUC** | P_worse | R_worse |
+|---|---|---|---|---|---|---|
+| Majority baseline | 0.675 | 0.500 | 0.403 | — | 0.000 | 0.000 |
+| **LogReg_L1** | 0.650 | **0.521** | **0.498** | **0.595** | 0.400 | 0.154 |
+| XGBoost | 0.625 | 0.483 | 0.440 | 0.476 | 0.250 | 0.077 |
+| RandomForest | 0.650 | 0.481 | 0.394 | 0.362 | 0.000 | 0.000 |
+| KNN | 0.600 | 0.444 | 0.375 | 0.420 | 0.000 | 0.000 |
+| LinearSVM | 0.475 | 0.392 | 0.389 | 0.100 | 0.167 | 0.154 |
+
+### Interpretation
+
+**Both formulations barely clear chance.** BalAcc ≈ 0.33 in 3-class (chance = 0.33), AUC ≈ 0.60 in 2-class. Compare with ALS_Long: BalAcc = 0.62, AUC = 0.67 on 9,369 pairs / 233 patients at 6–12 months. Our signal is much weaker because:
+
+1. **n = 40 pairs / 21 subjects** — 230× fewer pairs than ALS_Long. LOGO folds produce very noisy estimates (95% bootstrap CI on AUC is roughly ±0.15).
+2. **Median Δt ≈ 5 years** — ALS_Long deliberately capped at 12 months because long horizons dilute the baseline-feature signal. We have the opposite problem forced on us: home accelerometer was worn once at baseline, so the feature vector is 5 years stale by the time of the outcome.
+3. **Pediatric MS on DMTs shows non-monotonic trajectories** — 40% of pairs are *improvements*, which breaks the ALS-style "most patients decline" assumption and makes 3-class genuinely harder than 2-class decline detection.
+4. **MDC₉₅ is borrowed, not empirical** — we have no ≤21-day repeat 6MWTs, so the 30 m threshold is imported from adult-MS literature. Pediatric-MS MDC is not well established.
+
+**Conclusion.** The ALS_Long recipe is methodologically portable to this cohort, but the data do not support a useful predictor at this scale and horizon. Headline claim would be: *"with 40 visit-pairs from 21 pediatric MS subjects at a median 5-year horizon, baseline home accelerometer features do not predict ≥30 m change in 6MWD above chance (AUC 0.60, 95% CI crosses 0.50)."* Result is **not included in the paper**.
+
+### Regression variant — predict y_{t+1} (m) directly
+
+Same 40-pair / 21-subject dataset, LeaveOneGroupOut by subject, Ridge(α=20). Instead of classifying the direction of change, predict the next-visit 6MWD in meters. Home features are Spearman-selected (Top-10) inside each fold against `y_{t+1}`.
+
+Null reference: predicting the cohort mean gives R²=0, MAE=67.3 m, SD(y_next)=87.1 m. Mean Δ6MWD across pairs is only +4 m (SD 75.7 m) — the cohort drifts almost nowhere on average.
+
+| Config | #f | R² | MAE (m) | RMSE (m) | r | ρ |
+|---|---|---|---|---|---|---|
+| **C0 Identity** (ŷ = y₀) | 0 | **0.262** | **61.0** | 74.8 | **0.623** | 0.586 |
+| C1 Ridge[dt] | 1 | −0.033 | 72.4 | 88.6 | 0.064 | 0.055 |
+| C2 Ridge[y₀] | 1 | 0.251 | 58.5 | 75.4 | 0.513 | 0.409 |
+| C3 Ridge[y₀, dt] | 2 | 0.230 | 61.6 | 76.5 | 0.481 | 0.395 |
+| C4 Ridge[dt, Demo(4)] | 5 | 0.137 | 64.8 | 80.9 | 0.388 | 0.332 |
+| C5 Ridge[y₀, dt, Demo(4)] | 6 | 0.174 | 62.9 | 79.2 | 0.449 | 0.441 |
+| C6 Ridge[dt, Demo, home Top-10] | 15 | −0.314 | 81.8 | 99.9 | 0.012 | −0.076 |
+| C7 Ridge[y₀, dt, Demo, home Top-10] | 16 | −0.195 | 76.9 | 95.2 | 0.143 | 0.075 |
+
+**What the numbers say.**
+- **Identity wins.** Predicting ŷ = y₀ (no learning at all) gives R² = 0.262 and Pearson r = 0.623 — this *is* the 6MWD test-retest correlation of this cohort across a median ~5-year gap. Every model that tries to learn from home features, dt, or demographics does worse.
+- **`dt` carries no signal on its own** (C1: R² = −0.03). Across 0.9–8.8 years, linear time alone does not predict 6MWD change here — individual trajectories are non-monotonic.
+- **Home features actively hurt** (C6/C7: R² < 0). With n=40 pairs and p=15–16 features, Ridge overfits even at α=20. The home signal that works cross-sectionally (R²=0.452 on n=101) disappears once you require it to forecast 5 years out in a cohort of 21.
+- **MAE ≈ 60 m is the floor**, which is 2× the 30 m MDC₉₅. At this horizon and scale, you cannot beat "the patient's next 6MWD will be close to their last 6MWD."
+
+**Conclusion.** Same as the classification version: the ALS_Long-style prediction recipe is portable, but our cohort is too small and the horizons too long for the home features to add information on top of the previous 6MWD. Not included in the paper.
+
+### Worse-vs-zero variant — dropping the "better" pairs
+
+The 2-class (worse vs not-worse) task lumped 16 **better** pairs and 11 **zero** pairs into a single heterogeneous "not-worse" class, which is defensible for ALS (where improvement is rare) but weak for pediatric MS on DMTs (where ~40 % of our pairs are real improvements). The cleaner mechanistic framing is **decline vs stability**: drop the 16 better pairs and classify the remaining 24.
+
+- Subset: **n = 24 pairs, 13 MS subjects**, nearly balanced (13 worse / 11 zero)
+- Feature sweep: y₀, dt, Demo(4), and home features via Spearman Top-K inside each LOGO fold (K ∈ {0, 3, 5, 10, 20})
+- Models: LogReg L1/L2 (two C values each), LinearSVM (two C), RandomForest, XGBoost, KNN
+
+**Best config — LogReg L1 on [dt + home Top-5]:**
+
+| Metric | Value |
+|---|---|
+| Accuracy | 0.708 |
+| **Balanced Accuracy** | **0.717** |
+| F1-macro | 0.708 |
+| **ROC-AUC** | **0.804** |
+| Precision (worse) | 0.800 |
+| Recall (worse) | 0.615 |
+
+Confusion:
+
+|  | pred zero | pred worse |
+|---|---|---|
+| **true zero** (11) | 9 (TN) | 2 (FP) |
+| **true worse** (13) | 5 (FN) | 8 (TP) |
+
+**Permutation test (500 label shuffles, same LOGO + Spearman pipeline):** observed BalAcc 0.717 vs null mean 0.478 ± 0.135, **p ≈ 0.034**. The signal is not a lucky LOGO split.
+
+**Most-selected home features** (Spearman Top-5 per fold, across 13 folds):
+
+| Feature | Selected | Spearman ρ vs "worse" (full data) |
+|---|---|---|
+| `g_ml_range_cv` — CV of mediolateral range across bouts | 13/13 | **+0.67** |
+| `g_stride_time_cv_max` — max stride-time CV across bouts | 13/13 | **+0.60** |
+| `g_ml_range_med` — median ML range | 12/13 | −0.51 |
+| `g_stride_time_std_max` — max stride-time SD | 6/13 | +0.49 |
+| `act_enmo_kurtosis` — kurtosis of ENMO distribution | 6/13 | +0.47 |
+
+**Biological read.** All three dominant features are **gait-instability markers**: higher *variability* in mediolateral sway and stride timing at baseline predicts decline over the 0.9–8.8 year horizon. This is consistent with the MS balance-and-rhythm-deficit literature and matches the sign convention used in the paper's main feature correlations. The negative sign on `g_ml_range_med` suggests that patients who *restrict* ML sway (guarding behavior) at baseline also trend toward decline.
+
+**Why this works when worse-vs-not-worse didn't.** The "not-worse" class in the full binary was 27 pairs = 11 stable + 16 improved, and those two sub-populations have *opposite* home-feature profiles (improved subjects actually look more like worse subjects on some instability features — they started worse and gained). Lumping them diluted the gradient. Dropping "better" removes that ambiguity and leaves a cleaner contrast: stable vs declining, both populations starting from a similar baseline phenotype.
+
+### Caveats still apply
+
+- **n = 24, 13 subjects.** The permutation p-value (0.034) is not robust to more stringent multiplicity correction across all the configs we swept. Treat this as an encouraging pilot, not a confirmed predictor.
+- **Selection bias.** We picked the best of many configs; with 9 models × 8 feature sets, some will beat chance by luck. The permutation test addresses the null for *this* specific pipeline, not the family-wise error from the sweep.
+- **No "better" class means no clinical triage tool.** A classifier that only distinguishes decline from stability (not from improvement) doesn't answer "who needs intervention?" in a clinically actionable way — improvement would be misclassified as decline or stability depending on effect size.
+
+Still not in the paper. Kept in README as the most honest signal we could extract.
+
+### Reproduce
+
+```bash
+# classification (3-class + 2-class)
+python temp_exps/delta_6mwd_classifier.py
+# outputs: delta_6mwd_pairs.csv, delta_6mwd_results.csv,
+#          delta_6mwd_results_2class.csv, delta_6mwd_confusion.csv
+
+# regression
+python temp_exps/delta_6mwd_regressor.py
+# outputs: delta_6mwd_regression_results.csv
+
+# worse-vs-zero sweep + detail
+python temp_exps/worse_vs_zero_classifier.py       # full 9-model × 12-feature-set sweep (~5 min)
+python temp_exps/worse_vs_zero_best_detail.py      # best config detail + 500-perm test (~10 min)
+# outputs: worse_vs_zero_results.csv, worse_vs_zero_confusion.csv, worse_vs_zero_top_features.csv
+```

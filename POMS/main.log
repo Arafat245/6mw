@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.22 (TeX Live 2022/dev/Debian) (preloaded format=pdflatex 2024.11.29)  20 APR 2026 19:33
+This is pdfTeX, Version 3.141592653-2.6-1.40.22 (TeX Live 2022/dev/Debian) (preloaded format=pdflatex 2024.11.29)  21 APR 2026 20:28
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -483,80 +483,81 @@ LaTeX Warning: No \author given.
 [1
 
 {/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}] [2]
-<figures/fig_overview_diagram.png, id=247, 1452.42625pt x 1678.27pt>
+<figures/fig_overview_diagram.png, id=247, 1457.445pt x 1687.30376pt>
 File: figures/fig_overview_diagram.png Graphic file (type png)
 <use figures/fig_overview_diagram.png>
 Package pdftex.def Info: figures/fig_overview_diagram.png  used on input line 8
-3.
-(pdftex.def)             Requested size: 465.06004pt x 537.36467pt.
+4.
+(pdftex.def)             Requested size: 465.06004pt x 538.40347pt.
  [3] [4 <./figures/fig_overview_diagram.png>] [5] [6] [7] [8]
-<figures/bout_distribution_overview.png, id=333, 1176.3147pt x 508.299pt>
+<figures/bout_distribution_overview.png, id=332, 1178.9646pt x 510.2262pt>
 File: figures/bout_distribution_overview.png Graphic file (type png)
 <use figures/bout_distribution_overview.png>
 Package pdftex.def Info: figures/bout_distribution_overview.png  used on input 
-line 274.
-(pdftex.def)             Requested size: 465.06004pt x 200.95816pt.
-<figures/heatmap_feature_6mwd_corr_top10.png, id=335, 1113.9216pt x 417.4797pt>
+line 273.
+(pdftex.def)             Requested size: 465.06004pt x 201.26854pt.
+<figures/heatmap_feature_6mwd_corr_top10.png, id=334, 1234.8534pt x 420.3705pt>
 
 File: figures/heatmap_feature_6mwd_corr_top10.png Graphic file (type png)
 <use figures/heatmap_feature_6mwd_corr_top10.png>
 Package pdftex.def Info: figures/heatmap_feature_6mwd_corr_top10.png  used on i
-nput line 287.
-(pdftex.def)             Requested size: 465.06004pt x 174.29556pt.
+nput line 286.
+(pdftex.def)             Requested size: 465.06004pt x 158.31206pt.
  [9] [10 <./figures/bout_distribution_overview.png> <./figures/heatmap_feature_
 6mwd_corr_top10.png>]
-<figures/heatmap_clinic_home_feature_corr.png, id=354, 1103.5629pt x 415.3116pt
+<figures/heatmap_clinic_home_feature_corr.png, id=350, 1139.9388pt x 432.6564pt
 >
 File: figures/heatmap_clinic_home_feature_corr.png Graphic file (type png)
 <use figures/heatmap_clinic_home_feature_corr.png>
 Package pdftex.def Info: figures/heatmap_clinic_home_feature_corr.png  used on 
-input line 302.
-(pdftex.def)             Requested size: 465.06004pt x 175.01903pt.
-<figures/heatmap_clinical_corr_clinic.png, id=357, 856.6404pt x 417.9615pt>
+input line 301.
+(pdftex.def)             Requested size: 465.06004pt x 176.51224pt.
+<figures/heatmap_clinical_corr_clinic.png, id=353, 808.9422pt x 419.6478pt>
 File: figures/heatmap_clinical_corr_clinic.png Graphic file (type png)
 <use figures/heatmap_clinical_corr_clinic.png>
 Package pdftex.def Info: figures/heatmap_clinical_corr_clinic.png  used on inpu
-t line 319.
-(pdftex.def)             Requested size: 465.06004pt x 226.90758pt.
-<figures/heatmap_clinical_corr_home.png, id=358, 763.4121pt x 391.2216pt>
+t line 318.
+(pdftex.def)             Requested size: 465.06004pt x 241.25078pt.
+<figures/heatmap_clinical_corr_home.png, id=354, 789.4293pt x 419.6478pt>
 File: figures/heatmap_clinical_corr_home.png Graphic file (type png)
 <use figures/heatmap_clinical_corr_home.png>
 Package pdftex.def Info: figures/heatmap_clinical_corr_home.png  used on input 
-line 326.
-(pdftex.def)             Requested size: 465.06004pt x 238.32246pt.
+line 325.
+(pdftex.def)             Requested size: 465.06004pt x 247.21866pt.
  [11 <./figures/heatmap_clinic_home_feature_corr.png>] [12 <./figures/heatmap_c
 linical_corr_clinic.png> <./figures/heatmap_clinical_corr_home.png>]
-Overfull \hbox (0.83122pt too wide) in paragraph at lines 364--377
- [][] 
- []
-
-<figures/fig_model_comparison_mae.png, id=376, 715.9548pt x 339.4281pt>
+<figures/fig_model_comparison_mae.png, id=369, 715.9548pt x 339.4281pt>
 File: figures/fig_model_comparison_mae.png Graphic file (type png)
 <use figures/fig_model_comparison_mae.png>
 Package pdftex.def Info: figures/fig_model_comparison_mae.png  used on input li
-ne 383.
+ne 335.
 (pdftex.def)             Requested size: 465.06004pt x 220.48064pt.
-[13] [14 <./figures/fig_model_comparison_mae.png>] [15] (./main.bbl [16]
+
+Overfull \hbox (0.83122pt too wide) in paragraph at lines 372--385
+ [][] 
+ []
+
+[13 <./figures/fig_model_comparison_mae.png>] [14] [15] (./main.bbl [16]
 [17] [18]) [19]
-<figures/fig_supp_wear_median_bout.png, id=418, 842.1864pt x 403.2666pt>
+<figures/fig_supp_wear_median_bout.png, id=415, 1066.2234pt x 403.2666pt>
 File: figures/fig_supp_wear_median_bout.png Graphic file (type png)
 <use figures/fig_supp_wear_median_bout.png>
 Package pdftex.def Info: figures/fig_supp_wear_median_bout.png  used on input l
-ine 442.
-(pdftex.def)             Requested size: 434.70107pt x 208.14919pt.
-<figures/bout_duration_boxplots_per_subject.png, id=419, 783.8886pt x 448.074pt
->
+ine 441.
+(pdftex.def)             Requested size: 446.2652pt x 168.78624pt.
+<figures/bout_duration_boxplots_per_subject.png, id=416, 786.5385pt x 449.0376p
+t>
 File: figures/bout_duration_boxplots_per_subject.png Graphic file (type png)
 <use figures/bout_duration_boxplots_per_subject.png>
 Package pdftex.def Info: figures/bout_duration_boxplots_per_subject.png  used o
-n input line 451.
-(pdftex.def)             Requested size: 318.60945pt x 182.11848pt.
-<figures/fig_supp_bout_threshold_sensitivity.png, id=420, 607.5498pt x 353.8821
+n input line 450.
+(pdftex.def)             Requested size: 319.00241pt x 182.11958pt.
+<figures/fig_supp_bout_threshold_sensitivity.png, id=417, 607.5498pt x 353.8821
 pt>
 File: figures/fig_supp_bout_threshold_sensitivity.png Graphic file (type png)
 <use figures/fig_supp_bout_threshold_sensitivity.png>
 Package pdftex.def Info: figures/fig_supp_bout_threshold_sensitivity.png  used 
-on input line 460.
+on input line 459.
 (pdftex.def)             Requested size: 312.66452pt x 182.119pt.
  [20
 
@@ -567,13 +568,13 @@ Package rerunfilecheck Info: File `main.out' has not changed.
 (rerunfilecheck)             Checksum: 6E1C28B9B5227923040837953F08D9C7;6581.
  ) 
 Here is how much of TeX's memory you used:
- 12244 strings out of 480247
- 195233 string characters out of 5896150
- 503507 words of memory out of 5000000
- 29892 multiletter control sequences out of 15000+600000
+ 12242 strings out of 480247
+ 195186 string characters out of 5896150
+ 503667 words of memory out of 5000000
+ 29891 multiletter control sequences out of 15000+600000
  479656 words of font info for 68 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
- 60i,14n,63p,1955b,447s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 60i,14n,63p,1421b,446s stack positions out of 5000i,500n,10000p,200000b,80000s
  </mnt/sdb/arafat/.texlive2021/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm1000
 .600pk></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb
 ></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></usr
@@ -593,10 +594,10 @@ sr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/share
 -dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/share/texlive/texmf-dist/f
 onts/type1/public/amsfonts/cm/cmsy9.pfb></usr/share/texlive/texmf-dist/fonts/ty
 pe1/public/amsfonts/cm/cmti10.pfb>
-Output written on main.pdf (21 pages, 3739909 bytes).
+Output written on main.pdf (21 pages, 4047644 bytes).
 PDF statistics:
- 545 PDF objects out of 1000 (max. 8388607)
- 458 compressed objects within 5 object streams
- 125 named destinations out of 1000 (max. 500000)
+ 542 PDF objects out of 1000 (max. 8388607)
+ 455 compressed objects within 5 object streams
+ 124 named destinations out of 1000 (max. 500000)
  339 words of extra memory for PDF output out of 10000 (max. 10000000)
 

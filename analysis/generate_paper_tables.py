@@ -238,9 +238,12 @@ rows.insert(1, {'Variable': 'Sex (M/F)', f'All (n={n})': f'{sex_pm + sex_hm}/{se
 # 6MWD in meters
 y_m = y_ft * FT2M
 _, pval_6mwd = mannwhitneyu(y_m[is_poms], y_m[is_healthy], alternative='two-sided')
-rows.append({'Variable': '6MWD (m)', f'All (n={n})': f'{y_m.mean():.1f} \u00b1 {y_m.std():.1f}',
-             f'POMS (n={is_poms.sum()})': f'{y_m[is_poms].mean():.1f} \u00b1 {y_m[is_poms].std():.1f}',
-             f'Healthy (n={is_healthy.sum()})': f'{y_m[is_healthy].mean():.1f} \u00b1 {y_m[is_healthy].std():.1f}',
+def _mean_sd_range(v):
+    return f'{v.mean():.1f} \u00b1 {v.std():.1f} [{v.min():.1f}, {v.max():.1f}]'
+
+rows.append({'Variable': '6MWD (m)', f'All (n={n})': _mean_sd_range(y_m),
+             f'POMS (n={is_poms.sum()})': _mean_sd_range(y_m[is_poms]),
+             f'Healthy (n={is_healthy.sum()})': _mean_sd_range(y_m[is_healthy]),
              'p-value': f'{pval_6mwd:.4f}{sig_stars(pval_6mwd)}'})
 
 # Clinical scores (POMS-only: EDSS, MS Dur)

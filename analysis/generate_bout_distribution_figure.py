@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
-Side-by-side bout-distribution figure (mirrored to POMS/figures/):
+Three-panel bout-distribution figure (mirrored to POMS/figures/):
 
   bout_distribution_overview.png
-    LEFT  panel: joint scatter (n_bouts vs longest sustained bout) with KDE marginals.
-    RIGHT panel: pooled bout-duration survival per cohort (1-ECDF) with bootstrap CI.
+    LEFT   panel: violin of longest sustained bout per cohort (duration).
+    MIDDLE panel: violin of per-subject 90th-pct bout ENMO (intensity).
+    RIGHT  panel: pooled bout-duration survival per cohort (1-ECDF) with bootstrap CI.
 """
 import warnings
 import pickle
@@ -30,11 +31,11 @@ POINT_SIZE = 90
 
 # Match heatmap_feature_6mwd_corr_top10.png font sizes for paper consistency:
 #   suptitle 14, subplot title 13, tick/annot 11, axis label 12, legend 11
-LBL = 12   # axis label font
-TIT = 13   # subplot title font
-SUP = 14   # suptitle font
-LEG = 11   # legend font
-TICK = 11  # tick font
+LBL = 13   # axis label font (+1)
+TIT = 14   # subplot title font (+1)
+SUP = 15   # suptitle font (+1)
+LEG = 12   # legend font (+1)
+TICK = 12  # tick font (+1)
 
 
 def save_paper_figure(fig, filename, dpi=300):
@@ -56,6 +57,7 @@ def main():
     feat_df = pd.read_csv(FEATS / 'home_perbout_features.csv')
     max_by_key = feat_df.set_index('key')['g_duration_sec_max'].to_dict()
     med_by_key = feat_df.set_index('key')['g_duration_sec_med'].to_dict()
+    enmo_p90_by_key = feat_df.set_index('key')['g_enmo_mean_p90'].to_dict()
 
     rows = []
     durs_by_subj = {}
@@ -71,23 +73,9 @@ def main():
             'n_bouts': len(durations),
             'max_dur':    float(max_by_key[key]),
             'median_dur': float(med_by_key[key]),
+            'enmo_p90':   float(enmo_p90_by_key.get(key, np.nan)),
         })
     df = pd.DataFrame(rows).dropna(subset=['max_dur'])
-    # Attach 6MWD (m) and map to point sizes — used by both joint scatters
-    sixmwd_m = (subj_df.set_index('key')['sixmwd'].astype(float) * 0.3048).to_dict()
-    df['sixmwd_m'] = df['key'].map(sixmwd_m)
-    SZ_MIN, SZ_MAX = 25, 260
-    smwd_lo, smwd_hi = df['sixmwd_m'].min(), df['sixmwd_m'].max()
-
-    def _size_by_6mwd(vals):
-        v = np.asarray(vals, float)
-        return SZ_MIN + (v - smwd_lo) / max(smwd_hi - smwd_lo, 1e-9) * (SZ_MAX - SZ_MIN)
-
-    # Three tick values for size legend (rounded to nearest 50)
-    _lo = int(np.floor(smwd_lo / 50) * 50)
-    _hi = int(np.ceil(smwd_hi / 50) * 50)
-    _mid = int((_lo + _hi) / 2 / 50) * 50
-    SZ_LEG_VALS = [_lo, _mid, _hi]
 
     n_p = (df.cohort == 'POMS').sum()
     n_h = (df.cohort == 'Healthy').sum()
@@ -101,10 +89,10 @@ def main():
         pooled['POMS' if r['cohort'] == 'M' else 'Healthy'].extend(durs)
 
     # ─────────────────────────────────────────────────────────────────
-    # Combined figure: outer 1×3 (boxplot | joint+marginals | survival)
+    # Combined figure: outer 1×3 (duration | intensity | survival)
     # ─────────────────────────────────────────────────────────────────
-    fig = plt.figure(figsize=(20, 7))
-    outer = fig.add_gridspec(1, 3, width_ratios=[0.45, 1.05, 1], wspace=0.18)
+    fig = plt.figure(figsize=(17, 7))
+    outer = fig.add_gridspec(1, 3, width_ratios=[0.45, 0.45, 1.0], wspace=0.28)
 
     # LEFT: violin + jitter of longest sustained bout per cohort
     ax_bx = fig.add_subplot(outer[0])
@@ -154,13 +142,12 @@ def main():
                                    for t in major_ticks[:-1]])
     ax_bx.set_yticks(minor_ticks, minor=True)
 
-    ax_bx.set_xticklabels([f'Healthy\n(n={len(healthy_max)})',
-                            f'POMS\n(n={len(poms_max)})'],
+    ax_bx.set_xticklabels(['Healthy', 'POMS'],
                            fontsize=TICK, fontweight='bold')
     ax_bx.set_xlabel('')
     ax_bx.set_ylabel('Longest sustained bout (s)',
                       fontsize=LBL, fontweight='bold')
-    ax_bx.set_title('Cohort Comparison',
+    ax_bx.set_title('Longest Bout Distribution',
                      fontsize=TIT, fontweight='bold', pad=8)
     ax_bx.tick_params(axis='y', labelsize=TICK)
     ax_bx.grid(True, axis='y', which='both', alpha=0.25,
@@ -179,64 +166,62 @@ def main():
                 fontsize=LBL, fontweight='bold')
     ax_bx.set_ylim(top=y_top + 0.6)
 
-    # MIDDLE: joint scatter with marginal KDEs (5×5 subgridspec, ratio 4:1)
-    left = outer[1].subgridspec(5, 5, wspace=0.06, hspace=0.06)
-    ax_jn = fig.add_subplot(left[1:, :-1])           # joint scatter
-    ax_mx = fig.add_subplot(left[0, :-1], sharex=ax_jn)   # top marginal
-    ax_my = fig.add_subplot(left[1:, -1], sharey=ax_jn)   # right marginal
+    # MIDDLE: violin of per-subject 90th-percentile bout intensity (ENMO, g)
+    ax_in = fig.add_subplot(outer[1])
+    df_in = df[['cohort', 'enmo_p90']].dropna().copy()
+    poms_int    = df_in.loc[df_in.cohort == 'POMS',    'enmo_p90'].values
+    healthy_int = df_in.loc[df_in.cohort == 'Healthy', 'enmo_p90'].values
+    _, pval_in = mannwhitneyu(poms_int, healthy_int, alternative='two-sided')
+    stars_in = ('***' if pval_in < 0.001
+                else '**' if pval_in < 0.01
+                else '*' if pval_in < 0.05
+                else 'ns')
 
-    for cohort, color in [('Healthy', CLR_HEALTHY), ('POMS', CLR_POMS)]:
-        m = (df.cohort == cohort).values
-        ax_jn.scatter(df.loc[m, 'n_bouts'], df.loc[m, 'max_dur'],
-                      s=_size_by_6mwd(df.loc[m, 'sixmwd_m'].values),
-                      c=color, alpha=0.7,
-                      edgecolor='white', linewidth=0.7,
-                      zorder=3)
-    ax_jn.set_xscale('log'); ax_jn.set_yscale('log')
-    ax_jn.set_xlabel('Number of walking bouts per subject', fontsize=LBL, fontweight='bold')
-    ax_jn.set_ylabel('Longest sustained bout (s)', fontsize=LBL, fontweight='bold')
-    ax_jn.tick_params(axis='both', labelsize=TICK)
-    ax_jn.grid(True, which='both', alpha=0.25, linestyle='--', linewidth=0.5)
-    # Fixed-size cohort legend proxies — consistent across paper figures.
-    COHORT_LEG_S = 90
-    plt.sca(ax_jn)
-    cohort_handles = [
-        plt.scatter([], [], s=COHORT_LEG_S, c=CLR_HEALTHY,
-                    edgecolor='white', linewidth=0.7, alpha=0.85),
-        plt.scatter([], [], s=COHORT_LEG_S, c=CLR_POMS,
-                    edgecolor='white', linewidth=0.7, alpha=0.85),
-    ]
-    n_hc = int((df.cohort == 'Healthy').sum())
-    n_ms = int((df.cohort == 'POMS').sum())
-    leg_cohort = ax_jn.legend(
-        cohort_handles, [f'Healthy (n={n_hc})', f'POMS (n={n_ms})'],
-        loc='upper left', frameon=True, fontsize=LEG)
-    ax_jn.add_artist(leg_cohort)
-    size_handles = [plt.scatter([], [], s=_size_by_6mwd([v])[0],
-                                 c='gray', alpha=0.6, edgecolor='white')
-                    for v in SZ_LEG_VALS]
-    ax_jn.legend(size_handles, [f'{v} m' for v in SZ_LEG_VALS],
-                  loc='lower right', title='6MWD',
-                  frameon=True, fontsize=LEG - 1, title_fontsize=LEG - 1)
+    sns.violinplot(
+        data=df_in, x='cohort', y='enmo_p90',
+        order=['Healthy', 'POMS'], palette=palette,
+        inner=None, cut=0, linewidth=1.2,
+        saturation=0.9, width=0.85, ax=ax_in,
+    )
+    for coll in ax_in.collections:
+        coll.set_alpha(0.55)
+        coll.set_edgecolor('none')
 
-    sns.kdeplot(data=df, x='n_bouts', hue='cohort',
-                palette={'Healthy': CLR_HEALTHY, 'POMS': CLR_POMS},
-                hue_order=['Healthy', 'POMS'], fill=True, alpha=0.4,
-                linewidth=1.5, bw_adjust=0.8, log_scale=True,
-                ax=ax_mx, legend=False)
-    sns.kdeplot(data=df, y='max_dur', hue='cohort',
-                palette={'Healthy': CLR_HEALTHY, 'POMS': CLR_POMS},
-                hue_order=['Healthy', 'POMS'], fill=True, alpha=0.4,
-                linewidth=1.5, bw_adjust=0.8, log_scale=True,
-                ax=ax_my, legend=False)
-    for ax in (ax_mx, ax_my):
-        ax.set_xlabel(''); ax.set_ylabel('')
-        ax.tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
-        for s in ('top', 'right', 'left', 'bottom'):
-            ax.spines[s].set_visible(False)
+    sns.stripplot(
+        data=df_in, x='cohort', y='enmo_p90',
+        order=['Healthy', 'POMS'], palette=palette,
+        size=4.2, jitter=0.18, alpha=0.9,
+        edgecolor='white', linewidth=0.6, ax=ax_in,
+    )
 
-    ax_mx.set_title('Per-Subject Walking-Bout Distribution',
-                    fontsize=TIT, fontweight='bold', pad=8)
+    for i, cohort in enumerate(['Healthy', 'POMS']):
+        med = float(df_in.loc[df_in.cohort == cohort, 'enmo_p90'].median())
+        ax_in.plot([i - 0.22, i + 0.22], [med, med],
+                   color='black', linewidth=2.0, zorder=5)
+
+    ax_in.set_xticklabels(['Healthy', 'POMS'],
+                           fontsize=TICK, fontweight='bold')
+    ax_in.set_xlabel('')
+    ax_in.set_ylabel('90th percentile bout intensity (g)',
+                      fontsize=LBL, fontweight='bold')
+    ax_in.set_title('Bout Intensity Distribution',
+                     fontsize=TIT, fontweight='bold', pad=8)
+    ax_in.tick_params(axis='y', labelsize=TICK)
+    ax_in.grid(True, axis='y', which='both', alpha=0.25,
+               linestyle='--', linewidth=0.5)
+    ax_in.set_axisbelow(True)
+
+    y_top_in = float(df_in['enmo_p90'].max())
+    y_bar_in = y_top_in * 1.04
+    y_txt_in = y_top_in * 1.08
+    ax_in.plot([0, 0, 1, 1],
+                [y_bar_in - y_top_in * 0.01, y_bar_in, y_bar_in,
+                 y_bar_in - y_top_in * 0.01],
+                color='black', linewidth=1.1)
+    ax_in.text(0.5, y_txt_in, f'{stars_in}  (p = {pval_in:.1e})',
+                ha='center', va='bottom',
+                fontsize=LBL, fontweight='bold')
+    ax_in.set_ylim(top=y_top_in * 1.18)
 
     # RIGHT: survival curves
     ax_sv = fig.add_subplot(outer[2])
@@ -284,8 +269,8 @@ def main():
             ax_sv.scatter([t_thresh], [frac], s=24, c=color,
                           edgecolor='black', linewidth=0.5, zorder=4)
 
-    fig.suptitle('Home Walking-Bout Distribution and Pooled Survival',
-                 fontsize=SUP, fontweight='bold', y=1.02)
+    fig.suptitle('Home Walking-Bout Characteristics by Cohort',
+                 fontsize=SUP, fontweight='bold', y=1.0)
     save_paper_figure(fig, 'bout_distribution_overview.png')
     plt.close(fig)
     print("  Saved bout_distribution_overview.png [results/ + POMS/]")
@@ -335,9 +320,9 @@ def main():
         sharey=True,
     )
     _boxes(ax_p, poms_keys, CLR_POMS,
-           f'POMS (n={len(poms_keys)}) \u2014 subjects sorted by median bout duration')
+           'POMS \u2014 subjects sorted by median bout duration')
     _boxes(ax_h, healthy_keys, CLR_HEALTHY,
-           f'Healthy (n={len(healthy_keys)}) \u2014 subjects sorted by median bout duration')
+           'Healthy \u2014 subjects sorted by median bout duration')
     ax_h.set_xlabel('Subjects (sorted by median bout duration, low \u2192 high)',
                      fontsize=LBL, fontweight='bold')
     fig_bp.suptitle('Per-Subject Bout-Duration Distribution (Home)',

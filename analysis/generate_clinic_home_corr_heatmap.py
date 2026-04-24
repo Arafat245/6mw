@@ -122,18 +122,22 @@ def main() -> None:
             xticklabels=True, yticklabels=(k == 0),
             cbar=show_cbar, cbar_ax=cax if show_cbar else None,
             cbar_kws={'label': 'Spearman \u03c1'} if show_cbar else None,
-            annot_kws={'fontsize': 9, 'fontweight': 'bold'}, ax=ax,
+            annot_kws={'fontsize': 11, 'fontweight': 'bold'}, ax=ax,
         )
-        ax.set_title(f'{name} (n={n_panel})', fontsize=13, fontweight='bold')
-        ax.set_xlabel('Home' if k == 1 else '', fontsize=12, fontweight='bold')
-        ax.set_ylabel('Clinic' if k == 0 else '', fontsize=12, fontweight='bold')
+        ax.set_title(f'{name}', fontsize=15, fontweight='bold')
+        ax.set_xlabel('Home' if k == 1 else '', fontsize=14, fontweight='bold')
+        ax.set_ylabel('Clinic' if k == 0 else '', fontsize=14, fontweight='bold')
         for lbl in ax.get_yticklabels():
-            lbl.set_fontsize(10); lbl.set_rotation(0)
+            lbl.set_fontsize(12); lbl.set_rotation(0)
         for lbl in ax.get_xticklabels():
-            lbl.set_fontsize(10); lbl.set_rotation(45); lbl.set_ha('right')
+            lbl.set_fontsize(12); lbl.set_rotation(45); lbl.set_ha('right')
 
-    fig.suptitle('Clinic \u2194 Home Feature Correlations (Top-5 Matched Pairs)',
-                 fontsize=14, fontweight='bold', y=1.02)
+    # Consistent colorbar styling across heatmaps
+    cax.set_ylabel('Spearman \u03c1', fontsize=14)
+    cax.tick_params(labelsize=12)
+
+    fig.suptitle('Clinic and Home Wearable Feature Correlations (Top-5 Matched Pairs)',
+                 fontsize=16, fontweight='bold', y=1.02)
     fname = 'heatmap_clinic_home_feature_corr.png'
     fig.savefig(OUT / fname, dpi=300, bbox_inches='tight')
     fig.savefig(POMS_FIGURES / fname, dpi=300, bbox_inches='tight')

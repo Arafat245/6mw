@@ -5,7 +5,7 @@ clinical scores (MS only, n=38).
 
 Figure 3 — heatmap_clinical_corr_clinic.png
   Feature pool: Gait (11) + CWT (28) + WalkSway (12) = 51 clinic features.
-  Clinical scores: EDSS, MFIS Total, MFIS Phys, MFIS Cog, MFIS Psych, BDI, POMS Dur.
+  Clinical scores: EDSS, MFIS Total, MFIS Phys, MFIS Cog, MFIS Psych, BDI.
 
 Figure 4 — heatmap_clinical_corr_home.png
   Feature pool: Bout (g_*) + Act (act_*) from home_perbout_features.csv (152 features).
@@ -119,16 +119,20 @@ def plot_clinical_heatmap(r_df, annot_df, title, out_name):
         xticklabels=True, yticklabels=True,
         cbar=True,
         cbar_kws={'label': 'Spearman \u03c1'},
-        annot_kws={'fontsize': 10, 'fontweight': 'bold'},
+        annot_kws={'fontsize': 11, 'fontweight': 'bold'},
         ax=ax,
     )
     # `pad=14` moves the title further above the heatmap.
-    ax.set_title(title, fontsize=13, fontweight='bold', pad=14)
+    ax.set_title(title, fontsize=14, fontweight='bold', pad=14)
     ax.set_xlabel(''); ax.set_ylabel('')
     for lbl in ax.get_yticklabels():
-        lbl.set_fontsize(11)
+        lbl.set_fontsize(12)
     for lbl in ax.get_xticklabels():
-        lbl.set_fontsize(11)
+        lbl.set_fontsize(12)
+    # Consistent colorbar styling across heatmaps
+    cbar = ax.collections[0].colorbar
+    cbar.ax.set_ylabel('Spearman ρ', fontsize=14)
+    cbar.ax.tick_params(labelsize=12)
 
     save_paper_figure(fig, out_name)
     plt.close(fig)
@@ -145,7 +149,7 @@ def main():
     demo_xl['cohort'] = demo_xl['ID'].str.extract(r'^([A-Z])')[0]
     demo_xl['subj_id'] = demo_xl['ID'].str.extract(r'(\d+)')[0].astype(int)
     p = subj_df.merge(demo_xl, on=['cohort', 'subj_id'], how='left')
-    for c in ['EDSS Total', 'MS Dur', 'MFIS Total', 'MFIS Phys',
+    for c in ['EDSS Total', 'MFIS Total', 'MFIS Phys',
               'MFIS Cog', 'MFIS Psych', 'BDI Raw Score']:
         p[c] = pd.to_numeric(p[c], errors='coerce')
 
@@ -156,9 +160,8 @@ def main():
         'MFIS Cog':   p.loc[is_poms, 'MFIS Cog'].values.astype(float),
         'MFIS Psych': p.loc[is_poms, 'MFIS Psych'].values.astype(float),
         'BDI':        p.loc[is_poms, 'BDI Raw Score'].values.astype(float),
-        'POMS Dur':   p.loc[is_poms, 'MS Dur'].values.astype(float),
     }
-    home_scores = {k: v for k, v in clinic_scores.items() if k != 'POMS Dur'}
+    home_scores = clinic_scores
 
     # ── Clinic features (Gait + CWT + WalkSway) ──
     c_gait_df = pd.read_csv(FEATS / 'clinic_gait_features.csv')
@@ -220,6 +223,7 @@ def main():
         'g_stride_time_std_iqr',
         'g_stride_time_cv_med',
         'g_stride_time_cv_iqr',
+        'g_stride_time_mean_iqr',
     ]
 
     print(f"\nClinic pool: {X_clinic.shape[1]} features x {len(clinic_scores)} scores, POMS n={n_poms}")
@@ -228,7 +232,7 @@ def main():
         fixed_features=CLINIC_FIXED)
     plot_clinical_heatmap(
         clinic_r, clinic_annot,
-        f'Clinic Wearable Feature - Clinical Score Correlations (POMS Only, n={n_poms})',
+        'Clinic Wearable Feature and Clinical Score Correlations (POMS Only)',
         'heatmap_clinical_corr_clinic.png',
     )
 
@@ -237,7 +241,7 @@ def main():
         X_home, home_names, home_cats, home_scores, fixed_features=HOME_FIXED)
     plot_clinical_heatmap(
         home_r, home_annot,
-        f'Home Wearable Feature - Clinical Score Correlations (POMS Only, n={n_poms})',
+        'Home Wearable Feature and Clinical Score Correlations (POMS Only)',
         'heatmap_clinical_corr_home.png',
     )
 

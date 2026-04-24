@@ -123,8 +123,8 @@ def plot_side_by_side(clinic_r, clinic_annot, home_r, home_annot, n, out_name):
     Layout: big gap between the two panels, small gap between home panel and cbar.
     Achieved with a nested gridspec (outer wspace=0.85, inner wspace=0.05).
     """
-    fig = plt.figure(figsize=(15, 6.2))
-    outer = fig.add_gridspec(1, 2, width_ratios=[1, 1], wspace=0.55)
+    fig = plt.figure(figsize=(16, 6.2))
+    outer = fig.add_gridspec(1, 2, width_ratios=[1, 1], wspace=0.75)
     ax_l = fig.add_subplot(outer[0])
     inner = outer[1].subgridspec(1, 2, width_ratios=[1, 0.04], wspace=0.08)
     ax_r = fig.add_subplot(inner[0])
@@ -145,20 +145,24 @@ def plot_side_by_side(clinic_r, clinic_annot, home_r, home_annot, n, out_name):
             cbar=show_cbar,
             cbar_ax=cax if show_cbar else None,
             cbar_kws={'label': 'Spearman \u03c1'} if show_cbar else None,
-            annot_kws={'fontsize': 10, 'fontweight': 'bold'},
+            annot_kws={'fontsize': 13, 'fontweight': 'bold'},
             ax=ax,
         )
-        ax.set_title(title, fontsize=13, fontweight='bold')
+        ax.set_title(title, fontsize=14, fontweight='bold')
         ax.set_xlabel('')
         ax.set_ylabel('')
         for lbl in ax.get_yticklabels():
-            lbl.set_fontsize(11)
+            lbl.set_fontsize(14)
         for lbl in ax.get_xticklabels():
             lbl.set_fontweight('bold')
-            lbl.set_fontsize(11)
+            lbl.set_fontsize(14)
 
-    fig.suptitle(f'Feature Correlations with 6MWD (|\u03c1| > 0.3, Top 10 per Setting, n={n})',
-                 fontsize=14, fontweight='bold', y=0.97)
+    # Style the shared colorbar label consistently across heatmaps
+    cax.set_ylabel('Spearman ρ', fontsize=14)
+    cax.tick_params(labelsize=12)
+
+    fig.suptitle(f'Wearable Feature Correlations with 6MWD (|\u03c1| > 0.3, Top 10 per Setting)',
+                 fontsize=15, fontweight='bold', y=0.97)
     save_paper_figure(fig, out_name)
     plt.close(fig)
     print(f"  Saved {out_name} [results/ + POMS/]")
