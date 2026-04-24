@@ -56,23 +56,19 @@ def main():
     # also drops bouts where gait features could not be computed.)
     feat_df = pd.read_csv(FEATS / 'home_perbout_features.csv')
     max_by_key = feat_df.set_index('key')['g_duration_sec_max'].to_dict()
-    med_by_key = feat_df.set_index('key')['g_duration_sec_med'].to_dict()
     enmo_p90_by_key = feat_df.set_index('key')['g_enmo_mean_p90'].to_dict()
 
     rows = []
-    durs_by_subj = {}
     for _, r in subj_df.iterrows():
         key = r['key']
         if key not in bouts_per_subj or key not in max_by_key:
             continue
-        durations = np.array([(end - start) / FS for start, end in bouts_per_subj[key]])
-        durs_by_subj[key] = durations
+        n_bouts = len(bouts_per_subj[key])
         rows.append({
             'key': key,
             'cohort': 'POMS' if r['cohort'] == 'M' else 'Healthy',
-            'n_bouts': len(durations),
+            'n_bouts': n_bouts,
             'max_dur':    float(max_by_key[key]),
-            'median_dur': float(med_by_key[key]),
             'enmo_p90':   float(enmo_p90_by_key.get(key, np.nan)),
         })
     df = pd.DataFrame(rows).dropna(subset=['max_dur'])
@@ -104,13 +100,13 @@ def main():
              else '*' if pval < 0.05
              else 'ns')
 
-    # Work in log10 space so the violin kernel fits a long-tailed distribution
+    # Linear scale in minutes
     df_bx = df[['cohort', 'max_dur']].copy()
-    df_bx['log_max'] = np.log10(df_bx['max_dur'])
+    df_bx['max_dur_min'] = df_bx['max_dur'] / 60.0
 
     palette = {'Healthy': CLR_HEALTHY, 'POMS': CLR_POMS}
     sns.violinplot(
-        data=df_bx, x='cohort', y='log_max',
+        data=df_bx, x='cohort', y='max_dur_min',
         order=['Healthy', 'POMS'], palette=palette,
         inner=None, cut=0, linewidth=1.2,
         saturation=0.9, width=0.85, ax=ax_bx,
@@ -120,7 +116,7 @@ def main():
         coll.set_edgecolor('none')
 
     sns.stripplot(
-        data=df_bx, x='cohort', y='log_max',
+        data=df_bx, x='cohort', y='max_dur_min',
         order=['Healthy', 'POMS'], palette=palette,
         size=4.2, jitter=0.18, alpha=0.9,
         edgecolor='white', linewidth=0.6, ax=ax_bx,
@@ -128,24 +124,14 @@ def main():
 
     # Median ticks drawn in black on top of each violin
     for i, cohort in enumerate(['Healthy', 'POMS']):
-        med = np.median(np.log10(df_bx.loc[df_bx.cohort == cohort, 'max_dur']))
+        med = float(df_bx.loc[df_bx.cohort == cohort, 'max_dur_min'].median())
         ax_bx.plot([i - 0.22, i + 0.22], [med, med],
                    color='black', linewidth=2.0, zorder=5)
-
-    # Pretty log-scale y-ticks (we plot log10 but label as seconds)
-    log_lo = np.floor(df_bx['log_max'].min())
-    log_hi = np.ceil(df_bx['log_max'].max())
-    major_ticks = np.arange(log_lo, log_hi + 1)
-    ax_bx.set_yticks(major_ticks)
-    ax_bx.set_yticklabels([f'$10^{{{int(t)}}}$' for t in major_ticks])
-    minor_ticks = np.concatenate([np.log10(np.arange(2, 10)) + t
-                                   for t in major_ticks[:-1]])
-    ax_bx.set_yticks(minor_ticks, minor=True)
 
     ax_bx.set_xticklabels(['Healthy', 'POMS'],
                            fontsize=TICK, fontweight='bold')
     ax_bx.set_xlabel('')
-    ax_bx.set_ylabel('Longest sustained bout (s)',
+    ax_bx.set_ylabel('Longest sustained bout (min)',
                       fontsize=LBL, fontweight='bold')
     ax_bx.set_title('Longest Bout Distribution',
                      fontsize=TIT, fontweight='bold', pad=8)
@@ -154,17 +140,17 @@ def main():
                linestyle='--', linewidth=0.5)
     ax_bx.set_axisbelow(True)
 
-    # Significance bracket + stars (in log10 space)
-    y_top = df_bx['log_max'].max()
-    y_bar = y_top + 0.22
-    y_txt = y_bar + 0.10
+    # Significance bracket + stars (linear space)
+    y_top = float(df_bx['max_dur_min'].max())
+    y_bar = y_top * 1.05
+    y_txt = y_top * 1.09
     ax_bx.plot([0, 0, 1, 1],
-                [y_bar - 0.05, y_bar, y_bar, y_bar - 0.05],
+                [y_bar - y_top * 0.012, y_bar, y_bar, y_bar - y_top * 0.012],
                 color='black', linewidth=1.1)
     ax_bx.text(0.5, y_txt, f'{stars}  (p = {pval:.1e})',
                 ha='center', va='bottom',
                 fontsize=LBL, fontweight='bold')
-    ax_bx.set_ylim(top=y_top + 0.6)
+    ax_bx.set_ylim(top=y_top * 1.18)
 
     # MIDDLE: violin of per-subject 90th-percentile bout intensity (ENMO, g)
     ax_in = fig.add_subplot(outer[1])
@@ -223,13 +209,13 @@ def main():
                 fontsize=LBL, fontweight='bold')
     ax_in.set_ylim(top=y_top_in * 1.18)
 
-    # RIGHT: survival curves
+    # RIGHT: survival curves (x-axis in minutes)
     ax_sv = fig.add_subplot(outer[2])
     for cohort, color in [('Healthy', CLR_HEALTHY), ('POMS', CLR_POMS)]:
-        durs = np.array(sorted(pooled[cohort]))
+        durs = np.array(sorted(pooled[cohort]))  # seconds
         n_b = len(durs)
         surv = 1.0 - np.arange(n_b) / n_b
-        ax_sv.plot(durs, surv, color=color, linewidth=2.4,
+        ax_sv.plot(durs / 60.0, surv, color=color, linewidth=2.4,
                    label=f'{cohort}  ({n_b:,} pooled bouts)')
         rng = np.random.default_rng(42)
         subj_keys = [k for k in subj_df['key']
@@ -237,7 +223,7 @@ def main():
                      and (subj_df.loc[subj_df.key == k, 'cohort'].iloc[0]
                           == ('M' if cohort == 'POMS' else 'C'))]
         boot_grids = []
-        grid = np.logspace(np.log10(10), np.log10(durs.max()), 80)
+        grid = np.logspace(np.log10(10), np.log10(durs.max()), 80)  # seconds
         for _ in range(300):
             sample_keys = rng.choice(subj_keys, size=len(subj_keys), replace=True)
             boot_durs = []
@@ -250,23 +236,27 @@ def main():
             boot_grids.append(boot_surv)
         boot_arr = np.array(boot_grids)
         lo, hi = np.percentile(boot_arr, [2.5, 97.5], axis=0)
-        ax_sv.fill_between(grid, lo, hi, color=color, alpha=0.18)
+        ax_sv.fill_between(grid / 60.0, lo, hi, color=color, alpha=0.18)
 
     ax_sv.set_xscale('log'); ax_sv.set_yscale('log')
-    ax_sv.set_xlabel('Bout duration t (s)', fontsize=LBL, fontweight='bold')
+    x_ticks = [0.2, 0.5, 1, 2, 5, 10, 20, 50]
+    ax_sv.set_xticks(x_ticks)
+    ax_sv.set_xticklabels([('%g' % t) for t in x_ticks])
+    ax_sv.set_xticks([], minor=True)
+    ax_sv.set_xlabel('Bout duration t (min)', fontsize=LBL, fontweight='bold')
     ax_sv.set_ylabel('Fraction of bouts with duration \u2265 t',
                      fontsize=LBL, fontweight='bold')
     ax_sv.set_title('Pooled Bout-Duration Survival (95% Bootstrap CI)',
                     fontsize=TIT, fontweight='bold', pad=8)
     ax_sv.tick_params(axis='both', labelsize=TICK)
     ax_sv.grid(True, which='both', alpha=0.25, linestyle='--', linewidth=0.5)
-    ax_sv.legend(loc='lower left', frameon=True, fontsize=LEG)
-    for t_thresh in (30, 60, 120, 300):
+    ax_sv.legend(loc='upper right', frameon=True, fontsize=LEG)
+    for t_thresh in (30, 60, 120, 300):  # seconds
         for cohort in ('Healthy', 'POMS'):
             durs = np.array(pooled[cohort])
             frac = float((durs >= t_thresh).mean())
             color = CLR_HEALTHY if cohort == 'Healthy' else CLR_POMS
-            ax_sv.scatter([t_thresh], [frac], s=24, c=color,
+            ax_sv.scatter([t_thresh / 60.0], [frac], s=24, c=color,
                           edgecolor='black', linewidth=0.5, zorder=4)
 
     fig.suptitle('Home Walking-Bout Characteristics by Cohort',
@@ -276,61 +266,11 @@ def main():
     print("  Saved bout_distribution_overview.png [results/ + POMS/]")
 
     print("\n  Fraction of bouts \u2265 threshold:")
-    print(f"  {'Threshold':>10s}  {'Healthy':>10s}  {'POMS':>10s}")
+    print(f"  {'Threshold':>12s}  {'Healthy':>10s}  {'POMS':>10s}")
     for t_thresh in (30, 60, 120, 300, 600):
         h = (np.array(pooled['Healthy']) >= t_thresh).mean()
         p = (np.array(pooled['POMS'])   >= t_thresh).mean()
-        print(f"  {t_thresh:>8d} s  {h:>10.2%}  {p:>10.2%}")
-
-    # ─────────────────────────────────────────────────────────────────
-    # FIGURE: per-subject bout-duration boxplots (POMS top, Healthy bottom)
-    # Sorted by median bout duration.
-    # ─────────────────────────────────────────────────────────────────
-    poms_keys    = df[df.cohort == 'POMS'].sort_values('median_dur')['key'].tolist()
-    healthy_keys = df[df.cohort == 'Healthy'].sort_values('median_dur')['key'].tolist()
-
-    def _boxes(ax, keys, color, title):
-        data = [durs_by_subj[k] for k in keys]
-        ax.boxplot(data, positions=np.arange(len(keys)),
-                   widths=0.7, patch_artist=True,
-                   whis=(5, 95),
-                   showfliers=True,
-                   flierprops=dict(marker='o', markersize=1.8,
-                                   markerfacecolor=color,
-                                   markeredgecolor='none', alpha=0.35),
-                   medianprops=dict(color='black', linewidth=1.0),
-                   whiskerprops=dict(color=color, linewidth=0.9),
-                   capprops=dict(color=color, linewidth=0.9),
-                   boxprops=dict(facecolor=color, alpha=0.75,
-                                 edgecolor=color, linewidth=0.7))
-        ax.set_yscale('log')
-        ax.set_xlim(-0.8, len(keys) - 0.2)
-        ax.set_xticks([])
-        ax.set_ylabel('Bout duration (s)', fontsize=LBL, fontweight='bold')
-        ax.set_title(title, fontsize=TIT, fontweight='bold', pad=6)
-        ax.tick_params(axis='y', labelsize=TICK)
-        ax.grid(True, axis='y', which='both', alpha=0.25,
-                linestyle='--', linewidth=0.5)
-        ax.set_axisbelow(True)
-
-    fig_bp, (ax_p, ax_h) = plt.subplots(
-        2, 1, figsize=(13, 6.5),
-        gridspec_kw={'height_ratios': [len(poms_keys), len(healthy_keys)],
-                     'hspace': 0.35},
-        sharey=True,
-    )
-    _boxes(ax_p, poms_keys, CLR_POMS,
-           'POMS \u2014 subjects sorted by median bout duration')
-    _boxes(ax_h, healthy_keys, CLR_HEALTHY,
-           'Healthy \u2014 subjects sorted by median bout duration')
-    ax_h.set_xlabel('Subjects (sorted by median bout duration, low \u2192 high)',
-                     fontsize=LBL, fontweight='bold')
-    fig_bp.suptitle('Per-Subject Bout-Duration Distribution (Home)',
-                     fontsize=SUP, fontweight='bold', y=1.00)
-    save_paper_figure(fig_bp, 'bout_duration_boxplots_per_subject.png')
-    plt.close(fig_bp)
-    print("  Saved bout_duration_boxplots_per_subject.png [results/ + POMS/]")
-
+        print(f"  {t_thresh/60.0:>8.2f} min  {h:>10.2%}  {p:>10.2%}")
 
 if __name__ == '__main__':
     main()

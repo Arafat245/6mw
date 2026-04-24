@@ -1,28 +1,24 @@
 \begin{thebibliography}{10}
 
-\bibitem{compston2008multiple}
-Alastair Compston and Alasdair Coles.
-\newblock Multiple sclerosis.
-\newblock {\em The Lancet}, 372(9648):1502--1517, 2008.
+\bibitem{msif_atlas_2023_prevalence}
+{MS International Federation}.
+\newblock New prevalence and incidence data now available in the {Atlas of MS}.
+\newblock
+  \url{https://www.msif.org/news/2023/08/21/new-prevalence-and-incidence-data-now-available-in-the-atlas-of-ms/},
+  August 2023.
+\newblock Accessed: 2026-04-22.
 
-\bibitem{dobson2019multiple}
-Ruth Dobson and Gavin Giovannoni.
-\newblock Multiple sclerosis -- a review.
-\newblock {\em European Journal of Neurology}, 26(1):27--40, 2019.
-
-\bibitem{larocca2011impact}
-Nicholas~G LaRocca.
-\newblock Impact of walking impairment in multiple sclerosis: perspectives of
-  patients and care partners.
-\newblock {\em The Patient - Patient-Centered Outcomes Research},
-  4(3):189--201, 2011.
+\bibitem{cameron2018balance}
+Michelle~H. Cameron and Ylva Nilsagard.
+\newblock Balance, gait, and falls in multiple sclerosis.
+\newblock In {\em Handbook of Clinical Neurology}, volume 159, pages 237--250.
+  Elsevier, 2018.
 
 \bibitem{sosnoff2012quantifying}
-Jacob~J. Sosnoff, Megan Weikert, Deirdre Dlugonski, Dylan~C. Smith, and
-  Robert~W. Motl.
+Jacob~J. Sosnoff, Brian~M. Sandroff, and Robert~W. Motl.
 \newblock Quantifying gait abnormalities in persons with multiple sclerosis
-  using {GAITRite} walkway.
-\newblock {\em Multiple Sclerosis}, 18(2):166--170, 2012.
+  with minimal disability.
+\newblock {\em Gait \& Posture}, 36(1):154--156, 2012.
 
 \bibitem{kalron2015association}
 Alon Kalron.
@@ -55,23 +51,11 @@ Christian Confavreux, Sandra Vukusic, Thibault Moreau, and Patrice Adeleine.
 \newblock Relapses and progression of disability in multiple sclerosis.
 \newblock {\em New England Journal of Medicine}, 343(20):1430--1438, 2000.
 
-\bibitem{chitnis2009demographics}
-Tanuja Chitnis, Bonnie Glanz, Susan Jaffin, and Brian Healy.
-\newblock Demographics of pediatric-onset multiple sclerosis in an {MS} center
-  population from the {Northeastern United States}.
-\newblock {\em Multiple Sclerosis}, 15(5):627--631, 2009.
-
-\bibitem{banwell2007pediatric}
-Brenda~L Banwell.
-\newblock Multiple sclerosis in children: clinical diagnosis, therapeutic
-  strategies, and future directions.
-\newblock {\em The Lancet Neurology}, 6(10):887--902, 2007.
-
-\bibitem{yeh2009pediatric}
-E.~Ann Yeh, Tanuja Chitnis, Lauren Krupp, Jayne Ness, Dorothee Chabas, Nancy
-  Kuntz, and Emmanuelle Waubant.
-\newblock Pediatric multiple sclerosis.
-\newblock {\em Nature Reviews Neurology}, 5(11):621--631, 2009.
+\bibitem{siddiqui2024clinical}
+Areeba Siddiqui, Jennifer~H Yang, Le~H Hua, and Jennifer~S Graves.
+\newblock Clinical and treatment considerations for the pediatric and aging
+  patients with multiple sclerosis.
+\newblock {\em Neurologic Clinics}, 42(1):255--274, 2024.
 
 \bibitem{gorman2009increased}
 Mark~P. Gorman, Brian~C. Healy, Mariann Polgar-Turcsanyi, and Tanuja Chitnis.
@@ -87,8 +71,7 @@ Christel Renoux, Sandra Vukusic, Yann Mikaeloff, Gilles Edan, Michel Clanet,
 \newblock {\em New England Journal of Medicine}, 356(25):2603--2613, 2007.
 
 \bibitem{mckay2019long}
-Kyla~A. McKay, Ali Manouchehrinia, Lauren Berrigan, John~D. Fisk, Tomas Olsson,
-  and Jan Hillert.
+Kyla~A. McKay, Jan Hillert, and Ali Manouchehrinia.
 \newblock Long-term disability progression of pediatric-onset multiple
   sclerosis.
 \newblock {\em Neurology}, 92(24):e2764--e2773, 2019.
@@ -98,7 +81,7 @@ J.~Nicholas Brenton, Brian Florenzo, Hitoshi Koshiya, Seulgi Min, Emma
   Woolbright, Rachael Coleman, Shanshan Chen, and Myla~D. Goldman.
 \newblock Six-minute walk as a measure of walking capacity and endurance in
   patients with pediatric-onset multiple sclerosis.
-\newblock {\em Neurology}, 99(20):e2161--e2170, 2022.
+\newblock {\em Neurology}, 99(19):e2161--e2170, 2022.
 
 \bibitem{goldman2008evaluation}
 Matthew~D. Goldman, Ruth~Ann Marrie, and Jeffrey~A. Cohen.
@@ -113,36 +96,28 @@ Matthew~D. Goldman, Ruth~Ann Marrie, and Jeffrey~A. Cohen.
 \newblock {\em American Journal of Respiratory and Critical Care Medicine},
   166(1):111--117, 2002.
 
-\bibitem{motl2017wearable}
-Robert~W. Motl, Jacob~J. Sosnoff, Deirdre Dlugonski, Lara~A. Pilutti, Rachel
-  Klaren, and Brian~M. Sandroff.
-\newblock Wearable sensors to support the monitoring of walking in people with
-  multiple sclerosis.
-\newblock {\em Expert Review of Neurotherapeutics}, 17(3):251--261, 2017.
-
 \bibitem{alexander2021wearable}
-Sherri Alexander, Guy Peryer, Elaine Gray, Frederik Barkhof, and Jeremy
-  Chataway.
+Sarah Alexander, Guy Peryer, Emma Gray, Frederik Barkhof, and Jeremy Chataway.
 \newblock Wearable technologies to measure clinical outcomes in multiple
-  sclerosis: A scoping review.
+  sclerosis: a scoping review.
 \newblock {\em Multiple Sclerosis Journal}, 27(11):1643--1656, 2021.
 
 \bibitem{karas2023systematic}
-Marius Karas, Jennifer~L. Shafer, Heiko Gassner, Bjoern~M. Eskofier, Matteo
-  Zago, Sergio Cerutti, Maurizio Schmid, et~al.
+Tim Woelfle, Lucie Bourguignon, Johannes Lorscheider, Ludwig Kappos, Yvonne
+  Naegelin, and Catherine~Ruth Jutzeler.
 \newblock Wearable sensor technologies to assess motor functions in people with
   multiple sclerosis: Systematic scoping review and perspective.
 \newblock {\em Journal of Medical Internet Research}, 25:e44428, 2023.
 
 \bibitem{igarashi2024accelerometer}
-Takuya Igarashi, Yuki Tani, Rina Takeda, and Tomokazu Asakura.
+Tatsuya Igarashi, Yuta Tani, Ren Takeda, and Tomoyuki Asakura.
 \newblock Accelerometer-based gait characteristics and their discrimination of
   gait independence in inpatients with subacute stroke.
 \newblock {\em Gait \& Posture}, 110:138--143, 2024.
 
 \bibitem{moon2017monitoring}
-Yonhee Moon, Ryan~S. McGinnis, Kelly Seagers, Robert~W. Motl, Nitin Sheth,
-  John~A. Wright, Jr., Roozbeh Ghaffari, and John~A. Rogers.
+Yaejin Moon, Ryan~S. McGinnis, Kirsten Seagers, Robert~W. Motl, Nirav Sheth,
+  Jr. Wright, John~A., Roozbeh Ghaffari, and Jacob~J. Sosnoff.
 \newblock Monitoring gait in multiple sclerosis with novel wearable motion
   sensors.
 \newblock {\em PLoS ONE}, 12(2):e0171346, 2017.
@@ -154,69 +129,61 @@ Martina Mancini, Arash Salarian, Patricia Carlson-Kuhta, Cris Zampieri, Laurie
 \newblock {\em Journal of NeuroEngineering and Rehabilitation}, 9(1):59, 2012.
 
 \bibitem{meyer2024assessing}
-Brett~M. Meyer, Luigi~J. Tulipani, Reed~D. Gurchiek, Daniel~A. Allen, Lindsey
-  Adamowicz, Daniel Larie, Andrew~J. Solomon, and Ryan~S. McGinnis.
+Brett~M. Meyer, Jenna~G. Cohen, Paolo DePetrillo, Melissa Ceruolo, David
+  Jangraw, Nick Cheney, Andrew~J. Solomon, and Ryan~S. McGinnis.
 \newblock Assessing free-living postural sway in persons with multiple
   sclerosis.
 \newblock {\em IEEE Transactions on Neural Systems and Rehabilitation
-  Engineering}, 32:967--977, 2024.
+  Engineering}, 32:967--973, 2024.
 
 \bibitem{meyer2023chest}
-Brett~M. Meyer, Jenna~G. Cohen, Nick Donahue, Samantha~R. Fox, Aisling O'Leary,
-  Aidan~J. Brown, Ciaran Leahy, Torsten VanDyk, Paolo DePetrillo, Melissa
+Brett~M. Meyer, Jenna~G. Cohen, Nicole Donahue, Samantha~R. Fox, Aisling
+  O'Leary, Anna~J. Brown, Claire Leahy, Tyler VanDyk, Paolo DePetrillo, Melissa
   Ceruolo, Nick Cheney, Andrew~J. Solomon, and Ryan~S. McGinnis.
 \newblock Chest-based wearables and individualized distributions for assessing
   postural sway in persons with multiple sclerosis.
 \newblock {\em IEEE Transactions on Neural Systems and Rehabilitation
-  Engineering}, 31:2132--2140, 2023.
+  Engineering}, 31:2132--2139, 2023.
 
 \bibitem{motl2011accelerometry}
-Robert~W. Motl, Deirdre Dlugonski, Yoojin Suh, Megan Weikert, Bo~Fernhall, and
-  Matthew Goldman.
+Robert~W Motl, Deirdre Dlugonski, Yoojin Suh, Madeline Weikert, Bo~Fernhall,
+  and Myla Goldman.
 \newblock Accelerometry and its association with objective markers of walking
   limitations in ambulatory adults with multiple sclerosis.
-\newblock {\em Archives of Physical Medicine and Rehabilitation},
-  92(12):1972--1977, 2011.
-
-\bibitem{carpinella2023automatic}
-Ilaria Carpinella, Elisa Gervasoni, Denise Anastasi, Tiziana Lencioni, Davide
-  Cattaneo, and Maurizio Ferrarin.
-\newblock Automatic assessment of the 2-minute walk distance for remote
-  monitoring of people with multiple sclerosis.
-\newblock {\em Sensors}, 23(13):6017, 2023.
+\newblock {\em Archives of physical medicine and rehabilitation},
+  91(12):1942--1947, 2010.
 
 \bibitem{silva2024comprehensive}
-Catarina Silva, Joao~Paulo Cunha, and Ana Lopes.
+Therese~M. Andersen, Astrid~M. Andersen, Morten Riemenschneider, Laurits
+  Taul-Madsen, Mette Diechmann, Tobias Gaemelke, Ulrik Dalgas, Jan~Christian
+  Br{\o}nd, and Lars~G. Hvid.
 \newblock Comprehensive evaluation of accelerometer-based physical activity in
-  persons with multiple sclerosis---the influence of disability status and its
+  persons with multiple sclerosis - the influence of disability status and its
   impact on walking capacity.
-\newblock {\em Multiple Sclerosis and Related Disorders}, 92:106180, 2024.
+\newblock {\em Multiple Sclerosis and Related Disorders}, 93:106243, 2025.
 
 \bibitem{fitzgerald2026activity}
-Kathryn~C. Fitzgerald, Muraleetharan Sanjayan, Blake~E. Dewey, Pratim
-  Guha~Niyogi, Nicole Bou~Rjeily, Yara Fadlallah, Aoife Delaney, Alexandra
-  Zambriczki~Lee, Shivalika Duncan, Chasity Wyche, Peter~A. Calabresi, Vadim
-  Zipunnikov, and Ellen~M. Mowry.
+Kathryn~C Fitzgerald, Muraleetharan Sanjayan, Blake~E Dewey, Pratim
+  Guha~Niyogi, Nicole Bou~Rjeily, Yasser Fadlallah, Alice Delaney, Alexandra
+  Zambriczki~Lee, Safiya Duncan, Chelsea Wyche, et~al.
 \newblock Association of changes in activity patterns with brain atrophy and
   disability progression in people with multiple sclerosis.
 \newblock {\em Neurology}, 106(7):e214678, 2026.
 
 \bibitem{bourjeily2025accelerometry}
-Nicole Bou~Rjeily, Muraleetharan Sanjayan, Pratim Guha~Niyogi, Blake~E. Dewey,
-  Alexandra~Zambriczki Lee, Gabriella Dagher, Chen Hu, Rafal~D. Mazur, Elena~M.
-  Kenney, Erin Brennan, Anna DuVal, Peter~A. Calabresi, Vadim Zipunnikov,
-  Kathryn~C. Fitzgerald, and Ellen~M. Mowry.
+Nicole Bou~Rjeily, Muraleetharan Sanjayan, Pratim Guha~Niyogi, Blake~E Dewey,
+  Alexandra Zambriczki~Lee, Christy Hulett, Gabriella Dagher, Chen Hu, Rafal~D
+  Mazur, Elena~M Kenney, et~al.
 \newblock Accelerometry-assessed physical activity and circadian rhythm to
   detect clinical disability status in multiple sclerosis: Cross-sectional
   study.
 \newblock {\em JMIR mHealth and uHealth}, 13:e57599, 2025.
 
 \bibitem{gupta2023athome}
-Anoopum~S. Gupta, Shyamal Patel, Suril Gohel, Jean-Francois Daneault, Suneel
-  Bhatt, Rachit Garg, Joon Lee, Michael~J. McGeachie, and James~D. Berry.
+Anoopum~S. Gupta, Siddharth Patel, Alan Premasiri, and Fernando Vieira.
 \newblock At-home wearables and machine learning sensitively capture disease
   progression in amyotrophic lateral sclerosis.
-\newblock {\em Nature Communications}, 14(1):5080, 2023.
+\newblock {\em Nature Communications}, 14:5080, 2023.
 
 \bibitem{phan2020random}
 Dung Phan, Nghia Nguyen, Pubudu~N. Pathirana, Malcolm Horne, Laura Power, and
@@ -226,11 +193,19 @@ Dung Phan, Nghia Nguyen, Pubudu~N. Pathirana, Malcolm Horne, Laura Power, and
 \newblock {\em IEEE Sensors Journal}, 20(2):723--734, 2020.
 
 \bibitem{gashi2024modeling}
-Shkurta Gashi, Max Flag, Chukwuemeka Grevious, Parth Rathod, Olivia Rubin,
-  Meghana Daeschler, Judith Jaffe, Seth~N. Levin, Andoni~A. Lizarraga,
-  Claire~S. Riley, Philip~L. De~Jager, Janet~R. Cohn, and Deborah Estrin.
+Shkurta Gashi, Pietro Oldrati, Max Moebus, Marc Hilty, Liliana Barrios, Firat
+  Ozdemir, {{PHRT Consortium}}, Veronika Kana, Andreas Lutterotti, Gunnar
+  R{\"a}tsch, and Christian Holz.
 \newblock Modeling multiple sclerosis using mobile and wearable sensor data.
 \newblock {\em npj Digital Medicine}, 7(1):64, 2024.
+
+\bibitem{Kontaxis2023Automatic}
+Spyridon Kontaxis, Estela Laporta, Esther Garcia, Matteo Martinis, Letizia
+  Leocani, Lucia Roselli, Mathias~Due Buron, Ana~Isabel Guerrero, Ana Zabala,
+  Nicholas Cummins, et~al.
+\newblock Automatic assessment of the 2-minute walk distance for remote
+  monitoring of people with multiple sclerosis.
+\newblock {\em Sensors}, 23(13):6017, 2023.
 
 \bibitem{straczkiewicz2023walking}
 Marcin Straczkiewicz, Emily~J. Huang, and Jukka-Pekka Onnela.
@@ -238,13 +213,19 @@ Marcin Straczkiewicz, Emily~J. Huang, and Jukka-Pekka Onnela.
   smartwatches, and wearable accelerometers.
 \newblock {\em npj Digital Medicine}, 6(1):29, 2023.
 
-\bibitem{polman2011diagnostic}
-Chris~H. Polman, Stephen~C. Reingold, Brenda Banwell, Michel Clanet, Jeffrey~A.
-  Cohen, Massimo Filippi, Kazuo Fujihara, Eva Havrdova, Michael Hutchinson,
-  Ludwig Kappos, et~al.
-\newblock Diagnostic criteria for multiple sclerosis: 2010 revisions to the
-  {McDonald} criteria.
-\newblock {\em Annals of Neurology}, 69(2):292--302, 2011.
+\bibitem{Engelhard2018RealWorld}
+Matthew~M. Engelhard, Stephen~D. Patek, John~C. Lach, and Myla~D. Goldman.
+\newblock Real-world walking in multiple sclerosis: Separating capacity from
+  behavior.
+\newblock {\em Gait \& Posture}, 59:211--216, 2018.
+
+\bibitem{Sun2022Utility}
+Shaoxiong Sun, Amos~A Folarin, Yuezhou Zhang, Nicholas Cummins, Shuo Liu,
+  Callum Stewart, Yatharth Ranjan, Zulqarnain Rashid, Pauline Conde, Petroula
+  Laiou, et~al.
+\newblock The utility of wearable devices in assessing ambulatory impairments
+  of people with multiple sclerosis in free-living conditions.
+\newblock {\em Computer methods and programs in biomedicine}, 227:107204, 2022.
 
 \bibitem{kurtzke1983rating}
 John~F. Kurtzke.
@@ -258,12 +239,12 @@ Aaron~T. Beck, Calvin~H. Ward, Mock Mendelson, Judith Mock, and Jurgen Erbaugh.
 \newblock {\em Archives of General Psychiatry}, 4(6):561--571, 1961.
 
 \bibitem{vanhees2013separating}
-Vincent~T. van Hees, Lukas Gorzelniak, Emmanuel~Carlos Dean~Le{\'o}n, Martin
-  Eder, Marcelo Pias, Salman Taherian, Ulf Ekelund, Frank Ren{\"a}rd, and
-  Dale~W. Esliger.
+Vincent~T Van~Hees, Lukas Gorzelniak, Emmanuel~Carlos Dean~Le{\'o}n, Martin
+  Eder, Marcelo Pias, Salman Taherian, Ulf Ekelund, Frida Renstr{\"o}m, Paul~W
+  Franks, Alexander Horsch, et~al.
 \newblock Separating movement and gravity components in an acceleration signal
   and implications for the assessment of human daily physical activity.
-\newblock {\em PLoS ONE}, 8(4):e61691, 2013.
+\newblock {\em PloS one}, 8(4):e61691, 2013.
 
 \bibitem{qureshi2016relationship}
 Asma Qureshi, Maite Brandt-Pearce, and Myla~D. Goldman.
@@ -274,12 +255,12 @@ Asma Qureshi, Maite Brandt-Pearce, and Myla~D. Goldman.
   4959--4962. IEEE, 2016.
 
 \bibitem{storm2020free}
-Fabio~A. Storm, K.~P.~S. Nair, Angus~J. Clarke, and Claudia Van~der Meulen,
-  Jorik M. and";~Mazz\`{a}.
+Shirley Shema-Shiratzky, Inbar Hillel, Anat Mirelman, Keren Regev, Katherine~L.
+  Hsieh, Arnon Karni, Hannes Devos, Jacob~J. Sosnoff, and Jeffrey~M. Hausdorff.
 \newblock A wearable sensor identifies alterations in community ambulation in
   multiple sclerosis: contributors to real-world gait quality and physical
   activity.
-\newblock {\em Journal of Neurology}, 267:3162--3173, 2020.
+\newblock {\em Journal of Neurology}, 267(7):1912--1921, 2020.
 
 \bibitem{torrence1998practical}
 Christopher Torrence and Gilbert~P. Compo.
