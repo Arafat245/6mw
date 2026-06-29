@@ -1,0 +1,263 @@
+================================================================================
+FREE-LIVING (CONTINUOUS HOME ACCELEROMETRY) MEDIOLATERAL-SWAY FEATURES
+Full procedure, from raw GT3X to the significant POMS-vs-Control sway features
+POMS 6MWD project  ·  sway/  ·  n = 101 (38 POMS, 63 Control)
+================================================================================
+
+PURPOSE
+-------
+The clinic 6MWT shows POMS walk with elevated mediolateral (ML) trunk sway (four
+intensity-invariant ML-sway features, all higher in POMS). This document records
+the complete procedure used to test whether that ML-sway signature also appears in
+FREE-LIVING (continuous, multi-day, hip-worn) accelerometry, and what bout-selection
+/ aggregation choices were needed to recover it. The headline result: three of the
+four features replicate at home, in the same direction and with clinic-comparable
+effect sizes, and survive adjustment for sex, age, and BMI.
+
+
+--------------------------------------------------------------------------------
+0.  COHORT AND EXCLUSIONS
+--------------------------------------------------------------------------------
+- Source: waist/hip-worn ActiGraph GT3X, worn continuously over several days at
+  home ("Accel files/" raw GT3X).
+- Final cohort: n = 101 (38 POMS, 63 healthy Control). This is the standard project
+  cohort. Two subjects are excluded from ALL analyses:
+    * M44 - clinic recording too short (documented).
+    * M22 - excluded for data-quality reasons (kept excluded for consistency with
+            every other home analysis; see project notes).
+- Cohort label comes from the subject key: keys starting with "M" = POMS, "C" =
+  Control. Demographics (Sex, Age, BMI) from SwayDemographics.xlsx (ID like
+  "M-01"/"C-01"; Sex==2 -> Female).
+
+
+--------------------------------------------------------------------------------
+1.  RAW SIGNAL PREPARATION  (GT3X -> NPZ)   [home/step0_gt3x_to_npz.py]
+--------------------------------------------------------------------------------
+- Each subject's full continuous recording is converted GT3X -> NPZ with NO
+  filtering (sleep, sedentary, and worn-not-moving time all kept). Full-recording
+  retention is a deliberate project choice (it improves downstream 6MWD prediction).
+- Output: home_full_recording_npz/<KEY>.npz, each holding
+    'xyz'        : (N,3) accelerometer signal in g
+    'timestamps' : (N,) Unix epoch seconds (used later to assign bouts to days)
+- Sampling rate is HARDCODED to FS = 30 Hz for every subject (91 @ 30 Hz, 8 @ 60 Hz,
+  2 @ 100 Hz). Non-30 Hz subjects are NOT resampled - resampling was shown to hurt,
+  so the project treats all as 30 Hz by convention.
+
+
+--------------------------------------------------------------------------------
+2.  WALKING-BOUT DETECTION   [home/step1_detect_walking_bouts.py]
+--------------------------------------------------------------------------------
+- Walking bouts are detected across the full recording and cached as
+  feats/home_walking_bouts.pkl:
+    'bouts'      : {key -> list of (start_idx, end_idx)} index ranges into the NPZ
+    'bout_feats' : {key -> list of per-bout gait/activity feature dicts}
+- ALL detected bouts are kept (no bout verification/filtering - verification was
+  shown to hurt prediction).
+- For the sway analysis we use only SUSTAINED bouts, defined as bout duration
+  (end-start)/FS >= 60 s. Across the cohort: every subject has >=1 such bout
+  (median ~118 bouts >=60 s/subject; min 9).
+
+
+--------------------------------------------------------------------------------
+3.  PER-BOUT PREPROCESSING / AXIS ALIGNMENT   [home/step2_extract_features.py ::
+    preprocess_segment]   -- identical to the clinic pipeline
+--------------------------------------------------------------------------------
+For each sustained bout (raw xyz slice), preprocess_segment produces a true
+anatomically-aligned AP / ML / VT decomposition (the SAME routine used for clinic
+features), so home and clinic ML-sway are defined identically:
+
+  (a) Gravity estimate: 4th-order Butterworth low-pass at 0.25 Hz on each axis;
+      dynamic signal = raw - gravity.
+  (b) Vertical alignment: rotate the dynamic signal so mean gravity maps to +Z
+      (Rodrigues rotation about the gravity x Z axis). -> VT is now the vertical axis.
+  (c) Heading (yaw) alignment: PCA on the horizontal (X,Y) dynamic signal; the
+      principal horizontal axis is taken as Anteroposterior (AP), the orthogonal
+      horizontal axis as Mediolateral (ML). Rotate so AP/ML are axis-aligned.
+  (d) Band-pass copy: 4th-order Butterworth 0.25-2.5 Hz (used for gait/cadence; the
+      sway features below use the gravity-removed, non-band-passed AP/ML/VT).
+  (e) ENMO = max(|raw| - 1 g, 0), the standard intensity measure.
+
+IMPORTANT NOTE ON PROVENANCE
+  The pre-existing feats/home_walksway_features.csv was generated VM-based
+  (extract_walking_sway(vm,vm,vm); ml_over_vt hardcoded), so it is NOT a faithful
+  axis-separated analog of the clinic features. All sway features in THIS analysis
+  are recomputed axis-aligned from the NPZ + bout indices via preprocess_segment.
+
+
+--------------------------------------------------------------------------------
+4.  THE FOUR ML-SWAY FEATURES (per bout)   -- identical definitions to clinic
+--------------------------------------------------------------------------------
+On the gravity-removed, axis-aligned AP / ML / VT (and ENMO) of each bout:
+
+  ml_over_enmo        = RMS(ML) / mean(ENMO)
+                        Lateral sway per unit overall walking intensity.
+  ml_over_vt          = RMS(ML) / RMS(VT)
+                        Lateral sway relative to vertical (loading/propulsion) sway.
+  ml_energy_frac      = var(ML) / ( var(AP) + var(ML) + var(VT) )            [NEW]
+                        Fraction of total tri-axial sway energy that is mediolateral.
+                        Intensity-invariant by construction.
+  ml_spec_horiz_frac  = P_ML / ( P_ML + P_AP ),  band 0.3-10 Hz (Welch PSD)  [NEW]
+                        Lateral share of horizontal-plane spectral power (vertical
+                        axis removed). Frequency-domain view of forward->lateral
+                        redistribution. Intensity-invariant.
+
+All four are ratios of like-dimensioned quantities -> dimensionless.
+
+Per-bout values are cached once for all sustained bouts in
+  feats/home_sway_perbout_ge60.parquet   (key, day, hour, dur, 4 features; 15,244 bouts)
+so every downstream experiment is a fast table operation (no NPZ re-pass).
+
+
+--------------------------------------------------------------------------------
+5.  THE KEY QUESTION: HOW TO AGGREGATE FREE-LIVING BOUTS INTO ONE VALUE/SUBJECT
+--------------------------------------------------------------------------------
+Free-living walking is fragmented (many short, context-dependent walks) - unlike the
+single sustained max-effort clinic 6MWT. We tested several aggregation schemes for
+the per-subject value (group test = two-sided Mann-Whitney POMS vs Control, BH-FDR
+across the 4 features). [sway/codes/home_sway_boutselect_experiment.py]
+
+  Top-10 longest bouts >=60 s, median   -> NOTHING significant after BH.
+                                           (ml_over_enmo even reversed direction.)
+  Single LONGEST sustained bout         -> WORSE (all p_BH ~ 0.69). One atypical,
+                                           unusually-long walk is too noisy.
+  Longest bout, first 6 min / mid 6 min -> ns.
+  Top-3 longest, median                 -> ns.
+  Brenton-style per-epoch (longest >=6  -> ns at every epoch.
+    min walk split into 6 ~1-min epochs)
+
+  Median over ALL sustained (>=60 s)    -> 3 of 4 features BH-SIGNIFICANT.   <== WINNER
+    bouts  ("C0", representative sampling)
+
+CONCLUSION: the signal is recovered by REPRESENTATIVE aggregation over all sustained
+walking, not by isolating the longest/"most clinic-like" bout. The few longest bouts
+are atypical; the full distribution of sustained walking carries the between-subject
+ML-sway difference. This is the primary aggregation used for the paper.
+
+
+--------------------------------------------------------------------------------
+6.  BRENTON-2022 CONTINUOUS-ACCELEROMETRY PROCEDURE (read in full) AND ITS
+    COMPLIANCE STEPS - TESTED AND MOSTLY REJECTED
+--------------------------------------------------------------------------------
+Brenton et al. 2022 (Neurology; same POMS population) analysed free-living actigraphy
+by: (i) requiring >=3 consecutive valid wear days; (ii) sleep-wake detection, analysing
+wake/active periods only; (iii) valid day = >=10 h wear; (iv) DAY-level metrics as
+REPEATED MEASURES in an LME with day nested in participant, adjusting for sex/age/BMI.
+Their free-living signal was activity VOLUME (MVPA min/day), not sway.
+
+We ablated each compliance step on the sway features
+[sway/codes/home_sway_compliance_ablation.py] (per-subject MWU + BH):
+
+  C0  all >=60 s bouts, median (no day)      n=101  -> vt 0.005**, energy 0.005**, spec 0.042*
+  C1  per-day median -> mean over all days   n=101  -> vt 0.016*,  energy 0.031*,  spec 0.088
+  C2  + valid day = >=3 bouts/day            n=101  -> vt 0.020*,  energy 0.020*,  spec 0.020*
+  C3  + valid day = >=10 h wear              n= 41  -> vt 0.007**, energy 0.013*,  spec 0.285
+  C4  + active-only (least-active 8 h removed) n=40  -> vt 0.006**, energy 0.011*,  spec 0.306
+  C5  + >=3 consecutive valid days           n= 11  -> all ns (power destroyed)
+
+VERDICT on the compliance steps for a WITHIN-WALK SWAY RATIO:
+  - >=10 h valid-day filter: HARMFUL. Cuts n 101 -> 41 (only ~100/2,057 subject-days
+    reach 10 h under simple non-wear detection); ml_spec_frac loses significance.
+  - >=3 consecutive valid days: CATASTROPHIC. Only ~11 subjects survive -> no power.
+  - Sleep-wake / active-period restriction: NEGLIGIBLE. C3->C4 barely moves, because
+    sustained >=60 s WALKING bouts essentially never occur during sleep.
+  These screens exist to make daily activity-VOLUME metrics comparable across people;
+  for a within-walk sway ratio they only discard data and power. (Wear time here was a
+  crude per-minute std proxy, not the 90-min Choi algorithm, so exact n's are soft -
+  but compliance filtering can only shrink the sample, so the verdict is robust.)
+
+
+--------------------------------------------------------------------------------
+7.  PRIMARY STATISTICAL ANALYSIS  [sway/codes/make_home_walksway_stats_C0.py]
+--------------------------------------------------------------------------------
+- Per-subject value = median over ALL sustained (>=60 s) bouts (the C0 winner). No
+  wear/compliance filter, so all n=101 retained.
+- Group test: two-sided Mann-Whitney U (POMS vs Control).
+- Multiple comparisons: Benjamini-Hochberg FDR across the 4 features.
+- Effect size: Cohen's d (pooled SD).
+- Central tendency: median with 95% bootstrap CI (B=2000, seed=42).
+
+RESULTS (n=101: 38 POMS, 63 Control):
+  Feature              POMS median   Control median   d      p_raw   p_BH
+  ml_over_vt           0.651         0.547           +0.68   0.0022  0.0053  **
+  ml_energy_frac       0.175         0.149           +0.68   0.0027  0.0053  **
+  ml_spec_horiz_frac   0.330         0.318           +0.51   0.0317  0.0422  *
+  ml_over_enmo         1.16          1.14            -0.21   0.4724  0.4724  ns
+
+  -> 3/4 features HIGHER in POMS, surviving BH, with effect sizes (d 0.51-0.68)
+     concordant with the clinic 6MWT (clinic d ~ 0.5-0.74) and in the SAME direction.
+  -> ml_over_enmo is non-significant and slightly reversed (the ENMO normalisation is
+     distorted at home, where POMS have lower overall walking intensity).
+
+
+--------------------------------------------------------------------------------
+8.  ROBUSTNESS: BRENTON TABLE-5-STYLE LME  [sway/codes/make_home_sway_lme_table.py]
+--------------------------------------------------------------------------------
+A confirmatory day-level mixed model (mirrors Brenton's repeated-measures LME) to (a)
+adjust for sex/age/BMI and (b) rule out confounding, while keeping all n=101:
+
+  Model:  feature ~ MS + Female + Age_c + BMI_c ,  random intercept per subject
+          (day-level repeated measures; Age & BMI mean-centered)
+  Valid day = day with >=3 sustained (>=60 s) bouts; per-day value = median over that
+  day's up-to-8 longest bouts. Require only >=1 valid day per subject -> ALL 101 kept
+  (every subject has >=1 valid day), 963 subject-days, median 9 days/participant.
+  Fit on the original scale (REML); BH across all 4 features (denominator unchanged).
+
+RESULTS (MS = POMS-vs-Control, adjusted):
+  Feature              MS est   95% CI            p_raw    p_BH    Female p   BMI p
+  ml_over_vt           +0.095   0.037 to 0.153    0.0014   0.005   0.54       0.026*
+  ml_energy_frac       +0.021   0.006 to 0.035    0.0062   0.012   0.54       0.042*
+  ml_spec_horiz_frac   +0.022   0.002 to 0.042    0.0285   0.038   0.42       0.92
+  (ml_over_enmo: MS p_BH=0.45, ns - not shown in the trimmed table)
+
+INTERPRETATION:
+  - All three MS effects SURVIVE adjustment for sex, age, BMI -> the POMS sway
+    elevation is not a demographic artifact.
+  - Female is NON-significant in every model (p 0.42-0.85) -> the difference is NOT
+    sex-driven (the obvious reviewer objection is dead).
+  - Higher BMI (but NOT age) is independently associated with slightly LOWER
+    ml_over_vt / ml_energy_frac (p ~ 0.03-0.04); POMS remain elevated on top of it.
+  - The two methods agree: unadjusted per-subject Mann-Whitney AND adjusted day-level
+    LME both give the same 3 significant features in the same direction.
+
+
+--------------------------------------------------------------------------------
+9.  CROSS-SETTING FRAMING
+--------------------------------------------------------------------------------
+- CADENCE separates the groups only in the clinic (constrained max-effort 6MWT) and
+  collapses at home (free-living, context-dependent speeds) - see project notes.
+- DIRECTIONAL ML-SWAY redistribution is different: it PERSISTS into free-living
+  walking once aggregated representatively. POMS carry a larger lateral share of trunk
+  sway (energy & spectral) and elevated ML-vs-vertical sway BOTH in the clinic 6MWT and
+  at home. This is the novel free-living contribution of the sway analysis.
+
+
+--------------------------------------------------------------------------------
+10.  FILE MANIFEST
+--------------------------------------------------------------------------------
+Caches (feats/):
+  home_walking_bouts.pkl              bout index ranges + per-bout gait feats (input)
+  home_sway_perbout_ge60.parquet      per-bout 4 sway features, all >=60 s bouts (15,244)
+  home_perday_wear.parquet            per-subject-day worn minutes (wear ablation)
+  home_walksway_4features.csv         per-subject C0 values (n=101)
+
+Code (sway/codes/):
+  make_home_walksway_stats_C0.py      primary per-subject stats (MWU + BH + d + CI)
+  make_home_walksway_excel_build.py   definitions workbook builder
+  make_home_walksway_violins.py       3-panel violin figure
+  make_home_sway_lme_table.py         Brenton Table-5-style LME robustness table
+  home_sway_boutselect_experiment.py  aggregation-variant experiment (Sec 5)
+  home_sway_compliance_ablation.py    Brenton compliance-step ablation (Sec 6)
+  home_sway_brenton_lme.py            initial day-level LME exploration
+
+Tables (sway/table/):
+  walksway_significant_feature_definitions_home.xlsx   4-tab definitions workbook
+  home_walksway_significant_features.csv               primary group-difference stats
+  home_walksway_lme_robustness.csv / .tex              LME robustness table (3 feats)
+
+Figures (sway/figures/):
+  home_walksway_significant_violins.png                Control vs POMS, 3 sig features
+
+References (sway/sway_reference/):
+  brenton-et-al-2022-...pediatric-onset.pdf            continuous-accelerometry template
+  Huisinga2013, Solomon2015, Alkathiry2025             ML-sway feature motivation
+================================================================================

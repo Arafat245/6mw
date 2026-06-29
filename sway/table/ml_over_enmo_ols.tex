@@ -1,0 +1,19 @@
+% Requires \usepackage{booktabs}
+\begin{table}[t]
+\centering
+\caption{\textbf{Demographic and Disease Predictors of Mediolateral Sway (ML\_Over\_ENMO) Using Linear Regression}}
+\label{tab:ml_over_enmo_ols}
+\begin{tabular}{l ccc}
+\toprule
+Fixed effects & Effect size & 95\% CI & $p$ Value \\
+\midrule
+(Intercept) & 0.952 & 0.852 to 1.051 & \textbf{\textless0.001} \\
+\textbf{MS} & 0.130 & 0.011 to 0.249 & \textbf{0.032} \\
+\textbf{Female} & 0.106 & -0.006 to 0.217 & 0.063 \\
+\textbf{BMI} & 0.010 & 0.000 to 0.020 & \textbf{0.042} \\
+\textbf{Age} & -0.016 & -0.033 to 0.002 & 0.079 \\
+\bottomrule
+\end{tabular}
+\\[2pt]
+{\footnotesize Abbreviations: BMI = body mass index; MS = multiple sclerosis; POMS = pediatric-onset MS. Outcome is ML\_Over\_ENMO (mediolateral RMS acceleration divided by ENMO; dimensionless), one whole-walk value per participant from the clinic 6-minute walk; $n=120$ (50 POMS, 70 healthy controls). Effect size is the estimate from a linear regression (ordinary least squares; $R^2=0.187$) of ML\_Over\_ENMO on MS status, sex, BMI, and age. CIs represent the 95\% CIs. BMI and age were mean-centered. ``MS'' represents the group difference between the POMS and control group; ``Female'' represents the group difference between all females and males. Significant values ($p<0.05$) are shown in bold.}
+\end{table}

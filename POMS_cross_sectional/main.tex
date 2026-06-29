@@ -1,0 +1,505 @@
+\documentclass{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{float}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{multirow}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{textcomp}
+% \usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{array}
+\usepackage{caption}
+\usepackage{tabularx}
+\usepackage{threeparttable}
+\usepackage{xurl}
+\usepackage[hidelinks]{hyperref}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{Wearable Accelerometry for Gait Assessment and Six-Minute Walk Distance Prediction in Pediatric-Onset Multiple Sclerosis: A Clinic and Free-Living Home Comparison}
+
+% healthy subjects have less bouts but their duration of longest sustained bout is greater
+% poms subjects have more bouts but they are just short bouts
+
+
+
+\maketitle
+
+\begin{abstract}
+Walking difficulty is common in pediatric-onset multiple sclerosis (POMS), but it is unclear how much clinically relevant gait information can be recovered from unsupervised home accelerometry. We compared clinic and home accelerometry as markers of walking impairment and as predictors of six-minute walk distance (6MWD) in 38 participants with POMS and 63 healthy controls. Participants completed a supervised six-minute walk test (6MWT) and seven days of hip-worn accelerometry, from which we derived 51 clinic gait and sway features and 151 home bout-level and whole-recording activity features. Compared with controls, participants with POMS showed lower cadence, lower walking intensity, and greater mediolateral sway normalized to walking effort. In the clinic, intensity-related features correlated most strongly with 6MWD. Across subjects, the strongest agreement between clinic and home measures occurred when home features were summarized at the 90th percentile of walking bouts, suggesting that the 6MWT reflects near-peak rather than habitual free-living performance. Continuous-wavelet spectral features and stride-timing variability were associated with fatigue scores.
+For 6MWD prediction, Ridge regression achieved $R^2 = 0.81$ (MAE $= 31.2$ m) from clinic features and $R^2 = 0.45$ (MAE $= 56.0$ m) from a fully clinic-free home pipeline. Clinic prediction performed better in POMS than in healthy controls ($R^2 = 0.87$, MAE $= 29.0$ m vs $R^2 = 0.64$, MAE $= 32.5$ m), whereas home prediction was weaker in both groups ($R^2 = 0.38$ vs $0.21$). Home accelerometry therefore provides a useful but attenuated surrogate for clinic 6MWT performance in POMS.
+\end{abstract}
+
+\pagenumbering{arabic}
+
+
+\section{Introduction}\label{sec:intro}
+
+Multiple sclerosis (MS) is a chronic demyelinating disease of the central nervous system that affects an estimated 2.9 million people worldwide~\cite{msif_atlas_2023_prevalence}. Approximately 50 to 80\% of people with MS experience balance and gait dysfunction, and these impairments are associated with reduced walking-related physical activity, falls, and injuries~\cite{cameron2018balance}. These impairments include slower walking speed, lower cadence, shorter steps, and poorer balance~\cite{sosnoff2012quantifying, kalron2015association, hobart2003measuring}. Fatigue, the most commonly reported MS symptom, can further worsen walking over time~\cite{freal1984symptomatic, krupp1989fatigue, confavreux2000relapses}.
+
+Pediatric-onset MS (POMS), defined as initial disease onset before age 18 years, accounts for approximately 5\% of MS cases~\cite{siddiqui2024clinical}. Compared with adults, POMS patients have higher relapse rates~\cite{gorman2009increased} and often reach disability milestones at a younger age~\cite{renoux2007natural, mckay2019long}. Even when overall disability remains low, POMS participants are less active than their peers and can show subtle walking deficits~\cite{brenton2022sixminute}. Yet most MS gait studies have been conducted in adult cohorts, and wearable methods developed in adult MS may not transfer directly to POMS, where gait abnormalities can be milder and harder to detect. As a result, an important gap remains in understanding how gait and mobility should be characterized in POMS, especially outside the clinic in free-living settings.
+
+The six-minute walk test (6MWT) is a standard measure of walking capacity in MS and in POMS~\cite{goldman2008evaluation, ats2002guidelines, brenton2022sixminute}. It yields a single outcome, six-minute walk distance (6MWD), that summarizes cardiopulmonary, musculoskeletal, and neurological function. Although clinic testing is informative, it provides only episodic snapshots of walking performance and does not capture day-to-day behavior at home. Wearable accelerometers offer a way to fill that gap by continuously recording movement during daily life~\cite{alexander2021wearable, karas2023systematic}. Hip- or waist-worn accelerometers can quantify cadence, harmonic ratio, stride regularity, and postural sway~\cite{sosnoff2012quantifying, igarashi2024accelerometer, moon2017monitoring, mancini2012isway, meyer2024assessing, meyer2023chest}. In adult MS, wearable-derived activity measures have been linked to walking capacity~\cite{motl2011accelerometry, silva2024comprehensive, fitzgerald2026activity, bourjeily2025accelerometry} and, in other neurological conditions, to disease progression~\cite{gupta2023athome}. However, in POMS it remains unclear whether passive home accelerometry captures the same underlying mobility construct as a supervised clinic walking test, or whether it provides a related but distinct view of impairment.
+
+Wearable gait studies in POMS are rare. To our knowledge, the only prior study combining accelerometry with the 6MWT in POMS reported group-level activity differences, but did not test predictive models or systematically compare clinic and home measurements within the same subjects~\cite{brenton2022sixminute}. This leaves several unanswered questions and accordingly, we address following five questions in this paper.
+
+\begin{enumerate}
+    \item \textbf{RQ1}: Which wearable features, measured in the clinic 6MWT and in free-living home monitoring, differ between POMS and healthy controls, and with what effect size?
+    \item \textbf{RQ2}: Which clinic and home features are most correlated with measured 6MWD, and does the pattern hold within POMS alone?
+    \item \textbf{RQ3}: How strongly do matched clinic and home features correlate across the same subject, and which summary statistic of the home distribution best recovers the clinic measurement?
+    \item \textbf{RQ4}: Within POMS, how do clinic and home features correlate with Expanded Disability Status Scale (EDSS), Modified Fatigue Impact Scale (MFIS), and Beck Depression Inventory (BDI)?
+    \item \textbf{RQ5}: Can a seven-day home accelerometry model predict 6MWD with accuracy that approaches a clinic-based 6MWT model, for the full cohort and within POMS alone?
+\end{enumerate}
+
+By combining group comparisons, clinic and home correlation analyses, associations with clinical outcomes, and predictive modeling, this study evaluates whether seven-day home accelerometry can provide a clinically meaningful surrogate for clinic-based 6MWT assessment in POMS. In doing so, we aim to clarify which aspects of walking function are preserved in free-living monitoring, which are attenuated outside the clinic, and how home and clinic measurements differ in the mobility information they capture.
+
+
+\section{Related Work}\label{sec:related}
+
+\subsection{Wearable Gait Assessment in MS}
+
+Wearable sensors are increasingly used to quantify gait impairment in multiple sclerosis (MS) and related neurological disorders. Alexander et al.~\cite{alexander2021wearable} reviewed wearable approaches that complement episodic clinic assessments of walking in MS. Beyond broad activity monitoring, prior work has shown that wearable and instrumented gait measurements can capture clinically meaningful abnormalities in rhythm, variability, and balance. For example, Sosnoff et al.~\cite{sosnoff2012quantifying} reported that people with MS walk more slowly and with greater gait variability than controls. In other neurological populations, Igarashi et al.~\cite{igarashi2024accelerometer} showed that trunk-acceleration metrics, including normalized RMS measures, discriminate gait-independent from gait-dependent stroke patients, while Phan et al.~\cite{phan2020random} used random forests on wearable gait features to quantify gait ataxia with strong agreement to expert ratings. Postural sway has likewise been measured from body-worn sensors in controlled balance tasks~\cite{mancini2012isway} and adapted for free-living or wearable assessment in MS~\cite{meyer2024assessing,meyer2023chest}. Together, these studies show that wearable signals can capture multiple dimensions of motor dysfunction beyond simple activity volume.
+
+\subsection{Walking Capacity and Home Monitoring}
+
+The six-minute walk test (6MWT) is a standard measure of walking capacity in MS~\cite{goldman2008evaluation,ats2002guidelines}. In pediatric-onset multiple sclerosis (POMS), Brenton et al.~\cite{brenton2022sixminute} validated the 6MWT and showed that POMS participants walk shorter distances and fail to accelerate in the final minute of the test, supporting its relevance as a measure of endurance and walking limitation in this population. Outside the clinic, several studies have explored whether free-living wearable data can recover related information about mobility and disability. Gashi et al.~\cite{gashi2024modeling} separated MS from controls using wearable features, Bou Rjeily et al.~\cite{bourjeily2025accelerometry} showed that home accelerometry can detect disability status, and Fitzgerald et al.~\cite{fitzgerald2026activity} linked longitudinal changes in daytime activity to brain atrophy and disability progression. Other work has moved closer to direct distance estimation. Kontaxis et al.~\cite{Kontaxis2023Automatic} estimated two-minute walk distance from wearable signals in adult MS in both clinic and home settings, while Straczkiewicz et al.~\cite{straczkiewicz2023walking} described generalizable walking-bout detection methods for wearable accelerometers. Related work in amyotrophic lateral sclerosis further suggests that home wearable features can sensitively track disease progression~\cite{gupta2023athome}.
+
+Methodologically, prior wearable MS studies have taken several main forms. Some used free-living accelerometry largely as a validation tool for clinic-based walking impairment~\cite{motl2011accelerometry}. Others used more behavior-aware measures, such as step-rate or bout-based summaries, to better separate walking capacity from overall activity exposure~\cite{Engelhard2018RealWorld,straczkiewicz2023walking}. More recent work has moved toward direct prediction using wearable-derived summary features and standard machine-learning models~\cite{Sun2022Utility}, while another line of work estimated walking distance during structured remote walk tests rather than passive daily-life monitoring~\cite{Kontaxis2023Automatic}. In our context, these approaches remain limited because aggregate and step-count-based summaries are relatively coarse, structured remote tests are not equivalent to unconstrained home monitoring, and most prior studies were conducted in adult MS rather than POMS~\cite{motl2011accelerometry,Engelhard2018RealWorld,Sun2022Utility,Kontaxis2023Automatic}.
+
+\subsection{Gap in the Literature}
+
+Two gaps motivate this work. First, most wearable MS studies are based on adult cohorts and rarely include pediatric-onset patients. Because POMS participants generally have lower disability and subtler gait changes, methods developed for adult MS may not transfer directly. Second, few studies compare clinic and home features within the same subjects in a systematic way. Without that direct comparison, it remains unclear whether passive home monitoring measures the same underlying construct as a supervised clinic walking test, or whether it captures a related but distinct dimension of mobility. Our study addresses both gaps by focusing on a pediatric-onset cohort and by comparing clinic and home accelerometry at the subject level.
+
+
+\section{Methods}\label{sec:methods}
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.99\linewidth]{figures/fig_overview_diagram.png}
+    \caption{Study overview. Each of 101 participants completed a supervised six-minute walk test (6MWT) in the clinic and wore a hip-worn accelerometer for seven days at home. From the clinic recording we computed 51 gait features. From the home recording we detected walking bouts and computed 151 per-bout gait and activity features. The same subjects contribute to both the clinic and home analyses, so we can compare features, associations, and predictions directly.}
+    \label{fig:overview}
+\end{figure}
+
+\subsection{Participants}\label{sec:participants}
+
+Participants with POMS were recruited from the University of Virginia (UVA) Pediatric MS Clinic between 2016 and 2024. Age-matched healthy controls were recruited from the local community and UVA general pediatric clinics. The final cohort was 101 participants (38 POMS, 63 healthy controls) after excluding two POMS subjects for data-quality reasons. Table~\ref{tab:demographics} gives demographic and clinical characteristics. The POMS group was slightly younger ($16.5 \pm 2.6$ vs.\ $18.0 \pm 3.1$ years, $p = 0.007$), had higher BMI ($27.0 \pm 6.1$ vs.\ $22.9 \pm 3.9$, $p < 0.001$), and walked a shorter 6MWD ($576.1 \pm 99.1$ vs.\ $674.7 \pm 81.4$ m, $p < 0.001$). The study was approved by the UVA Institutional Review Board. Written informed consent was obtained from all adult participants and written assent from minors with parental consent.
+
+\begin{table}[!ht]
+\centering
+\caption{Demographic and clinical characteristics of the study cohort. Values are mean $\pm$ SD, with the range [min, max] shown in brackets for 6MWD. $p$-values from Mann-Whitney $U$ tests (continuous variables) or chi-squared test (sex). EDSS and disease duration are reported for POMS only. *$p<0.05$, **$p<0.01$, ***$p<0.001$.}
+\label{tab:demographics}
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Variable & All ($n=101$) & POMS ($n=38$) & Healthy ($n=63$) & $p$-value \\
+\midrule
+Age (years) & $17.5 \pm 3.0$ & $16.5 \pm 2.6$ & $18.0 \pm 3.1$ & 0.007** \\
+Sex (M/F) & 33/68 & 11/27 & 22/41 & 0.688 \\
+Height (m) & 1.69 ± 0.10 & 1.68 ± 0.11 & 1.69 ± 0.09 & 0.42 \\
+Weight (kg) & $70.1 \pm 19.3$ & $76.7 \pm 23.8$ & $66.1 \pm 14.8$ & 0.027* \\
+BMI (kg/m$^2$) & $24.4 \pm 5.2$ & $27.0 \pm 6.1$ & $22.9 \pm 3.9$ & $<$0.001*** \\
+6MWD (m) & $637.6 \pm 100.5$ [339--1040] & $576.1 \pm 99.1$ [339--759] & $674.7 \pm 81.4$ [530--1040] & $<$0.001*** \\
+\addlinespace
+EDSS & --- & $1.8 \pm 0.8$ & --- & --- \\
+Disease Duration (years) & --- & $2.5 \pm 2.3$ & --- & --- \\
+\addlinespace
+MFIS Total & $15.0 \pm 13.9$ & $19.9 \pm 16.6$ & $12.0 \pm 11.1$ & 0.027* \\
+MFIS Physical & $6.3 \pm 6.3$ & $8.9 \pm 7.5$ & $4.7 \pm 4.9$ & 0.009** \\
+MFIS Cognitive & $7.6 \pm 7.5$ & $9.8 \pm 8.9$ & $6.3 \pm 6.2$ & 0.141 \\
+MFIS Psychosocial & $1.0 \pm 1.2$ & $1.3 \pm 1.4$ & $0.9 \pm 1.1$ & 0.202 \\
+BDI & $5.6 \pm 7.1$ & $8.0 \pm 8.4$ & $4.2 \pm 5.8$ & 0.004** \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Data Collection}\label{sec:collection}
+
+\subsubsection{Clinic 6MWT}
+Each participant walked for six minutes in a standardized hospital corridor while wearing an ActiGraph GT3X hip-mounted accelerometer at 30 Hz. Total distance was recorded in feet and converted to meters. On the same visit, the EDSS~\cite{kurtzke1983rating}, MFIS~\cite{krupp1989fatigue} with total, physical, cognitive, psychosocial scores, and BDI~\cite{beck1961inventory} were administered. From Table~\ref{tab:demographics} we can see that POMS participants reported higher physical fatigue (MFIS Physical $8.9 \pm 7.5$ vs.\ $4.7 \pm 4.9$, $p = 0.009$) and higher depressive symptoms (BDI $8.0 \pm 8.4$ vs.\ $4.2 \pm 5.8$, $p = 0.004$). Median EDSS among POMS participants was $1.8 \pm 0.8$ and mean disease duration was $2.5 \pm 2.3$ years.
+
+\subsubsection{Home Monitoring}
+After the clinic visit, participants wore a hip-mounted ActiGraph accelerometer for seven days during all waking activities, except during water-based activities. The device sampled continuously at 30 Hz. Daily wear time, estimated from minute-level vector-magnitude variability using a standard accelerometer wear/nonwear detection rule, was comparable between POMS and healthy controls (median 59 vs.\ 53 hours; Mann-Whitney $U$, $p = 0.19$; Supplementary Figure~\ref{fig:supp_wear_median_bout}), indicating that between-cohort compliance was not a confounding factor for subsequent home analyses.
+
+\subsection{Data Preprocessing}\label{sec:preprocessing}
+
+\subsubsection{Clinic Data}
+Raw tri-axial acceleration from the 6MWT was processed in four steps: (1) gravity was estimated with a 0.25 Hz fourth-order Butterworth lowpass filter and subtracted; (2) the vertical axis was aligned with the estimated gravity vector using Rodrigues rotation; (3) principal component analysis on the horizontal plane resolved the yaw, giving anteroposterior (AP), mediolateral (ML), and vertical (VT) axes; (4) a bandpass filter at 0.25 to 2.5 Hz isolated the gait band. The full pipeline is show in Figure~\ref{fig:overview}.
+
+\subsubsection{Home Data}
+Home data were processed per walking bout. Walking bouts were detected with a three-stage pipeline: per-second Euclidean Norm Minus One (ENMO) thresholding at $\geq 0.015\,g$ with a minimum 10 s duration, harmonic ratio verification in 10 s sliding windows, and merging of adjacent bouts separated by gaps of at most 5 s. The 10 s minimum-duration floor was chosen empirically and was confirmed to be the best operating point for 6MWD prediction in a sensitivity analysis (Supplementary Figure~\ref{fig:supp_bout_threshold}): raising the threshold to 30--240\,s reduced the number of retained bouts and degraded the home Bout+Act-Top20+Demo MAE from 56.0\,m to 60--66\,m. All detected bouts were kept without further quality filtering. Each bout was then processed the same way as the clinic data: gravity removal, axis alignment, PCA-based yaw, and bandpass filtering.
+
+\subsection{Feature Extraction}\label{sec:features}
+
+Table~\ref{tab:features} lists all features by category and setting. The clinic side has 51 features in three families. The home side has 151 features that summarize per-bout gait and whole-recording activity.
+
+\subsubsection{Clinic Gait Features (11)}
+These features capture the temporal structure and intensity of walking:
+\begin{itemize}
+    \item \textbf{cadence\_hz}: walking cadence in Hz, estimated from the peak of the vertical power spectral density in the 0.5 to 3.5 Hz gait band. Reduced cadence is a well-established sign of gait impairment in MS~\cite{sosnoff2012quantifying}.
+    \item \textbf{step\_time\_cv\_pct}: coefficient of variation of step times in percent, computed from peak-to-peak intervals in the vertical bandpass signal. Higher step-time variability is associated with greater disability and less regular gait in MS~\cite{kalron2015association}.
+    \item \textbf{acf\_step\_regularity}: autocorrelation of the vertical bandpass signal at the step lag, used as a step-regularity index; values close to 1 indicate more repeatable stepping.
+    \item \textbf{hr\_ap, hr\_vt}: harmonic ratios in the anteroposterior and vertical directions, computed as the ratio of even to odd harmonics of the gait frequency. Higher values reflect smoother and more symmetric gait~\cite{igarashi2024accelerometer}.
+    \item \textbf{ml\_rms\_g}: root mean square of mediolateral dynamic acceleration in gravitational units. ML acceleration reflects the magnitude of side-to-side trunk oscillation and has been shown to discriminate gait independence in neurological populations~\cite{igarashi2024accelerometer}.
+    \item \textbf{ml\_spectral\_entropy}: normalized spectral entropy of the ML power spectrum in the cadence-relative frequency band. Higher entropy reflects a less concentrated spectral profile.
+    \item \textbf{jerk\_mean\_abs\_gps}: mean absolute jerk of the 3D velocity magnitude in $g$/s. Jerk quantifies the smoothness of movement and is used in postural-control assessment~\cite{mancini2012isway}.
+    \item \textbf{enmo\_mean\_g}: mean Euclidean Norm Minus One (ENMO), computed as $\max(\sqrt{a_x^2 + a_y^2 + a_z^2} - 1\,g,\; 0)$. ENMO is a standard measure of movement intensity that removes the gravitational component~\cite{vanhees2013separating}.
+    \item \textbf{cadence\_slope\_per\_min}: linear slope of cadence over the six one-minute segments of the 6MWT, summarizing within-test change in cadence that may reflect deceleration over the walk~\cite{qureshi2016relationship}.
+    \item \textbf{vt\_rms\_g}: root mean square of vertical dynamic acceleration in $g$. VT RMS captures the vertical oscillation amplitude during the gait cycle and has been used as a gait-quality marker in free-living monitoring~\cite{storm2020free, igarashi2024accelerometer}.
+\end{itemize}
+
+\subsubsection{Clinic CWT Features (28)}
+We applied a continuous wavelet transform (CWT)~\cite{torrence1998practical} with a Morlet wavelet to the vector magnitude acceleration. The CWT gives a time-frequency representation that exposes how spectral content of walking evolves over the test. For each of the six one-minute segments we computed ten base features:
+\begin{itemize}
+    \item \textbf{mean\_energy}: average wavelet power across all time and frequency bins.
+    \item \textbf{high\_freq\_energy}: mean wavelet power above 3.5 Hz, capturing high-frequency gait dynamics such as foot-strike impacts.
+    \item \textbf{dominant\_freq}: frequency with the highest time-averaged wavelet power.
+    \item \textbf{estimated\_cadence}: cadence (steps/min) estimated from the CWT gait band (0.5 to 3.5 Hz).
+    \item \textbf{max\_power\_freq}: frequency of the global maximum in the time-frequency plane.
+    \item \textbf{freq\_variability}: standard deviation of the dominant frequency across one-second windows; higher cadence-related frequency variability may indicate less stable gait rhythm.
+    \item \textbf{freq\_cv}: coefficient of variation of the dominant frequency.
+    \item \textbf{wavelet\_entropy}: Shannon entropy of the normalized wavelet power distribution, measuring the uniformity of power across frequencies.
+    \item \textbf{fundamental\_freq}: fundamental gait frequency estimated from the FFT of the segment.
+    \item \textbf{harmonic\_ratio}: ratio of even to odd FFT harmonic amplitudes, reflecting gait symmetry and smoothness in the frequency domain.
+\end{itemize}
+The ten base features were aggregated across the six segments as mean and standard deviation (20 features), plus a linear slope and slope $R$ value for four fatigue-sensitive descriptors (mean\_energy, high\_freq\_energy, freq\_variability, wavelet\_entropy), giving 28 features total. Slope features capture gradual changes over the walk that are thought to reflect motor fatigue~\cite{qureshi2016relationship}. The CWT feature set intentionally provides segment-level, wavelet-based estimators of cadence (fundamental\_freq, dominant\_freq, estimated\_cadence) that complement the Welch-PSD cadence computed over the full walk in the Gait feature set; the two estimators are correlated ($r \approx 0.72$) but not identical, reflecting their different time-frequency resolutions, and Ridge regression with feature standardization handles the residual correlation without overfitting.
+
+\subsubsection{Clinic WalkSway Features (12)}
+Raw sway metrics such as ML range, path length, and jerk scale with walking speed: faster walkers generate larger accelerations in all directions, which inflates sway measures regardless of actual postural instability~\cite{mancini2012isway, meyer2023chest}. To remove this confound, each sway metric was divided by ENMO (or by ENMO$^2$ where area scales quadratically). The 12 features are:
+\begin{itemize}
+    \item \textbf{ml\_range\_norm}: peak-to-peak ML range divided by ENMO, representing lateral excursion per unit of walking effort.
+    \item \textbf{ml\_path\_length\_norm}: cumulative absolute ML displacement divided by ENMO.
+    \item \textbf{ml\_jerk\_rms\_norm}: RMS of ML jerk (second derivative) divided by ENMO, measuring smoothness of lateral trunk control.
+    \item \textbf{ap\_rms\_norm, ap\_range\_norm}: AP RMS and peak-to-peak range divided by ENMO.
+    \item \textbf{sway\_ellipse\_norm}: area of the 95\% confidence ellipse in the ML-AP plane divided by ENMO$^2$, a standard measure of overall sway volume in postural-control studies~\cite{mancini2012isway, meyer2023chest}.
+    \item \textbf{ml\_velocity\_rms\_norm}: RMS of ML velocity (first derivative) divided by ENMO.
+    \item \textbf{stride\_ml\_cv}: coefficient of variation of stride-to-stride ML peak amplitudes. Stride-to-stride variability is a sensitive marker of gait instability in neurological populations~\cite{kalron2015association, phan2020random}.
+    \item \textbf{ml\_ap\_ratio}: ML RMS divided by AP RMS, capturing the directional dominance of sway.
+    \item \textbf{hr\_ml}: harmonic ratio in the ML direction, quantifying left-right gait symmetry.
+    \item \textbf{ml\_over\_enmo}: ML RMS divided by ENMO, a simple normalized lateral-sway index.
+    \item \textbf{ml\_over\_vt}: ML RMS divided by VT RMS, capturing lateral sway relative to vertical gait dynamics.
+\end{itemize}
+
+\subsubsection{Home Free-Living Features (151)}
+For each detected walking bout we computed 20 per-bout gait features (cadence, stride timing, step regularity, AP/ML/VT RMS, jerk, harmonic ratios, ENMO). Because subjects have variable bout counts, we aggregated per-bout features using six summary statistics per feature: median, interquartile range (IQR), 10th percentile, 90th percentile, maximum, and coefficient of variation (CV), giving 122 per-bout features in total. We also computed 29 whole-recording activity features spanning ENMO distribution moments and percentiles, proportions of sedentary, light, moderate, and vigorous activity, fragmentation indices (active-to-sedentary transition probability), and early/mid/late-day ENMO trends. Activity-intensity thresholds use the ENMO metric introduced by van Hees et al.~\cite{vanhees2013separating}. The home features give the free-living counterpart of the supervised clinic 6MWT at the subject level.
+
+\begin{table}[!ht]
+\centering
+\caption{Feature categories and counts. Clinic features come from the supervised 6MWT recording. Home features come from seven-day free-living accelerometry with automatic walking-bout detection.}
+\label{tab:features}
+\small
+\begin{tabular}{@{}p{1.2cm}p{2.4cm}cp{8.5cm}@{}}
+\toprule
+Setting & Category & Count & Description \\
+\midrule
+Clinic & Gait & 11 & Cadence, step timing, autocorrelation, harmonic ratios, RMS, entropy, jerk, ENMO, cadence slope \\
+\addlinespace
+Clinic & CWT & 28 & 10 base wavelet descriptors $\times$ 3 aggregations (mean, SD, and a linear slope for four fatigue-sensitive features) \\
+\addlinespace
+Clinic & WalkSway & 12 & ENMO-normalized ML and AP sway metrics, sway ellipse, stride variability, harmonic ratios \\
+\addlinespace
+Home & Bout & 122 & 20 per-bout features $\times$ 6 aggregations (median, IQR, p10, p90, max, CV) + 2 meta (total walk seconds, mean bout duration) \\
+\addlinespace
+Home & Activity & 29 & Whole-recording ENMO moments and percentiles, activity-intensity proportions, fragmentation, diurnal trends \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Statistical Analysis}\label{sec:stats}
+
+Group differences between POMS and healthy controls were tested with Mann-Whitney $U$ tests. Effect sizes were reported as Cohen's $d$ (positive $d$ means POMS is higher than healthy). $p$-values were adjusted for multiple testing across features within each setting using the Benjamini-Hochberg procedure~\cite{benjamini1995controlling}. Feature-to-outcome associations (6MWD, clinical scores) were quantified with Spearman rank correlations, which capture monotonic non-linear relationships.
+
+\subsection{Prediction Models and Evaluation Metrics}\label{sec:models}
+
+The main prediction model was Ridge regression~\cite{hoerl1970ridge}. Ridge was chosen because it handles correlated features well and is stable at small sample sizes, which matches our cohort of 101. The regularization parameter was $\alpha = 5$ for the clinic setting and $\alpha = 20$ for the home setting, both selected by prior experimentation. All models were evaluated using leave-one-subject-out (LOO) cross-validation. Features were standardized (zero mean, unit variance) within each training fold to prevent information leakage. For the clinic model, the full 55-feature set (Gait + CWT + WalkSway + Demo) was used without feature selection. For the home model, Spearman-based feature selection was run inside each LOO fold: the 20 per-bout features most correlated with 6MWD on the training set were kept, and the four demographic features were appended. We also compared Ridge against six alternative models (Lasso, ElasticNet, $k$-nearest neighbors, support vector regression, random forest, and XGBoost) under the same LOO protocol.
+
+Model performance was summarized by $R^2$, mean absolute error (MAE) in meters, and Pearson $r$ between predicted and actual 6MWD. 95\% confidence intervals were obtained by bootstrapping the subject-level predictions with 2000 resamples.
+
+
+\section{Results}\label{sec:results}
+
+The Results are organized to match the five research questions.
+
+\subsection{RQ1: Group Difference in Features}\label{sec:rq1}
+
+Table~\ref{tab:mshealthy} lists the features that differed between groups at $p_{\mathrm{BH}} < 0.05$ in each setting, ranked by effect size. We kept features whose direction is consistent with gait literature (higher value means more pathology or less vigor). In the clinic, POMS participants showed lower spectral tempo (CWT fundamental frequency $d = -0.92$, estimated cadence $d = -0.82$, dominant frequency $d = -0.77$, cadence $d = -0.73$), lower walking intensity (ENMO $d = -0.83$, VT RMS $d = -0.78$), and lower absolute jerk ($d = -0.70$). Only one normalized sway feature reached significance with the expected direction: ML over ENMO was higher in POMS ($d = 0.66$, $p_{\mathrm{BH}} = 0.017$), meaning that for the same level of walking effort, POMS participants showed more lateral sway.
+
+In the home setting, ten features were significantly different. Per-bout jerk ($d = -1.12$), AP RMS ($d = -1.02$), bout-duration coefficient of variation ($d = -0.98$), longest bout duration ($d = -0.77$), and 10th-percentile ENMO ($d = -0.75$) were all lower in POMS, indicating shorter, less vigorous, and less varied walking. Cross-bout AP RMS variability was higher in POMS ($d = 0.74$), reflecting more inconsistent gait from bout to bout. Activity-level features showed smaller effects: percentage of time in vigorous activity ($d = -0.33$) and 95th-percentile ENMO ($d = -0.27$) were lower in POMS. The pattern is consistent across settings: POMS participants walked less intensely and with more variability.
+
+\begin{table}[!t]
+\centering
+\caption{Features that differ significantly between POMS and healthy controls in each setting. POMS and Healthy columns show mean~$\pm$~SD in the native feature units. Rows are ordered by $|d|$ within each setting. Negative $d$ means POMS is lower than healthy. Significance levels use BH-adjusted $p$-values: *$p<0.05$, **$p<0.01$, ***$p<0.001$.}
+\label{tab:mshealthy}
+\footnotesize
+\begin{tabular}{@{}llccrr@{}}
+\toprule
+Setting & Feature & POMS & Healthy & $d$ & $p_{\mathrm{BH}}$ \\
+\midrule
+Clinic (CWT)      & cwt\_fundamental\_freq\_mean  & $1.88 \pm 0.49$      & $2.19 \pm 0.20$      & $-0.92$ & 0.0007*** \\
+Clinic (Gait)     & enmo\_mean\_g                 & $0.227 \pm 0.084$    & $0.304 \pm 0.098$    & $-0.83$ & 0.0009*** \\
+Clinic (CWT)      & cwt\_estimated\_cadence\_mean & $138.2 \pm 36.8$     & $159.5 \pm 15.9$     & $-0.82$ & 0.0034** \\
+Clinic (Gait)     & vt\_rms\_g                    & $0.454 \pm 0.147$    & $0.569 \pm 0.146$    & $-0.78$ & 0.0019** \\
+Clinic (CWT)      & cwt\_dominant\_freq\_mean     & $2.30 \pm 0.61$      & $2.73 \pm 0.51$      & $-0.77$ & 0.0028** \\
+Clinic (Gait)     & cadence\_hz                   & $2.04 \pm 0.19$      & $2.18 \pm 0.19$      & $-0.73$ & 0.0025** \\
+Clinic (Gait)     & jerk\_mean\_abs\_gps          & $7.68 \pm 2.99$      & $9.90 \pm 3.23$      & $-0.70$ & 0.0039** \\
+Clinic (WalkSway) & ml\_over\_enmo                & $1.16 \pm 0.34$      & $0.99 \pm 0.20$      & $+0.66$ & 0.0170* \\
+\midrule
+\addlinespace
+Home (Bout)       & g\_jerk\_mean\_med            & $1.38 \pm 0.73$      & $2.38 \pm 0.97$      & $-1.12$ & 0.0001*** \\
+Home (Bout)       & g\_ap\_rms\_med               & $0.098 \pm 0.050$    & $0.157 \pm 0.061$    & $-1.02$ & 0.0001*** \\
+Home (Bout)       & g\_duration\_sec\_cv          & $1.34 \pm 0.44$      & $2.06 \pm 0.86$      & $-0.98$ & 0.0001*** \\
+Home (Bout)       & g\_duration\_sec\_max         & $606.5 \pm 415.1$    & $1163.2 \pm 853.0$   & $-0.77$ & 0.0007*** \\
+Home (Bout)       & g\_enmo\_mean\_p10            & $0.0249 \pm 0.0035$  & $0.0284 \pm 0.0052$  & $-0.75$ & 0.0022** \\
+Home (Bout)       & g\_ap\_rms\_cv                & $0.850 \pm 0.276$    & $0.682 \pm 0.188$    & $+0.74$ & 0.0009*** \\
+Home (Bout)       & g\_acf\_step\_reg\_max        & $0.910 \pm 0.070$    & $0.936 \pm 0.037$    & $-0.49$ & 0.0102* \\
+Home (Act)        & act\_pct\_vigorous            & $0.070 \pm 0.048$    & $0.085 \pm 0.042$    & $-0.33$ & 0.0395* \\
+Home (Act)        & act\_enmo\_p95                & $0.123 \pm 0.064$    & $0.137 \pm 0.044$    & $-0.27$ & 0.0280* \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.97\linewidth]{figures/bout_distribution_overview.png}
+    \caption{Home walking-bout characteristics by cohort. Left: violin plot of the longest sustained bout per subject where POMS subjects have fewer long sustained bouts. Middle: violin plot of the per-subject 90th percentile of bout intensity. Right: pooled bout-duration survival curve with 95\% bootstrap CI.}
+    \label{fig:bout_overview}
+\end{figure}
+
+Figure~\ref{fig:bout_overview} shows the raw home walking-bout distribution. The left violin plot shows that healthy controls have a wider spread of longest bout durations (with more subjects reaching multi-minute bouts), while POMS participants cluster at shorter durations. The middle panel shows that POMS subjects have lower bout intensity than healthy. The survival plot in right panel confirms that the two distributions start together at short durations but separate at $\sim$1.7 min, where healthy controls keep more bouts of longer duration.
+
+
+
+\subsection{RQ2: Features Correlated with 6MWD}\label{sec:rq2}
+
+Figure~\ref{fig:corr_6mwd} shows the Spearman correlation between each top-ranked feature and 6MWD in all 101 subjects, POMS only, and healthy only. In the clinic panel, gait intensity and tempo features had the strongest correlations: ENMO ($\rho = 0.80$), VT RMS ($\rho = 0.76$), mean absolute jerk ($\rho = 0.73$), CWT fundamental frequency ($\rho = 0.68$), and cadence ($\rho = 0.68$). All are positive, meaning higher vigor and higher tempo are associated with longer 6MWD. ML over ENMO is the only pathology ratio in the top 10 and correlates negatively ($\rho = -0.42$), meaning more relative lateral sway is associated with shorter 6MWD. The pattern holds within the POMS subgroup, with most correlations in the range $\rho = 0.66$ to $0.79$.
+
+In the home panel, correlations with 6MWD are smaller in magnitude but directionally consistent. Longer maximum bout duration, higher percentage of vigorous activity, more varied bout durations, and higher peak activity intensity all correlate positively with 6MWD ($\rho = 0.34$ to $0.37$). Stride-to-bout AP RMS variability correlates negatively ($\rho = -0.35$). Free-living correlations are smaller because walking bouts at home are shorter and more heterogeneous than the supervised 6MWT, but the direction of each correlation matches the clinic setting.
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/heatmap_feature_6mwd_corr_top10.png}
+    \caption{Spearman correlations between accelerometry features and 6MWD in the full cohort (All), the POMS subgroup, and the healthy subgroup. Clinic features (left) and home features (right) are shown side by side. Gait intensity and tempo features dominate the clinic side. Home correlations are smaller but directionally consistent. Significance stars use raw $p$-values: *$p<0.05$, **$p<0.01$, ***$p<0.001$.}
+    \label{fig:corr_6mwd}
+\end{figure}
+
+\subsection{RQ3: Correlation Between Clinic and Home Wearable Features}\label{sec:rq3}
+
+If the supervised 6MWT and free-living walking measure the same underlying trait, we expect clinic features and home features to correlate across subjects. To test this, we paired each of the top five clinic Gait features (ENMO, jerk, ML RMS, cadence, VT RMS) with its home counterpart summarized at the 90th percentile of each subject's walking bouts, and computed a $5 \times 5$ Spearman cross-correlation panel. This lets us see both the diagonal match (same feature measured in clinic vs.\ home) and any off-diagonal spillover between features.
+
+Figure~\ref{fig:clinic_home_corr} shows the result. In the full cohort, the five diagonal matches cluster in the range $\rho = 0.30$ to $0.33$ (all $p < 0.01$): clinic ENMO with 90th-percentile home ENMO ($\rho = 0.33$), clinic VT RMS with 90th-percentile home VT RMS ($\rho = 0.33$), clinic jerk with 90th-percentile home jerk ($\rho = 0.31$), clinic ML RMS with 90th-percentile home ML RMS ($\rho = 0.31$), and clinic cadence with 90th-percentile home cadence ($\rho = 0.30$). Off-diagonal cells are comparable in magnitude to the diagonal, indicating that intensity-, jerk-, and tempo-related features co-vary at the subject level across both settings rather than being cleanly separable.
+
+This pattern supports a simple interpretation: the six-minute walk test pushes each subject toward the upper end of their own free-living effort distribution. The clinic measurement lines up with the subject's 90th-percentile home value rather than with their median or maximum. In the POMS subgroup the diagonal correlations are similar in direction and magnitude ($\rho = 0.24$ to $0.36$), with VT RMS ($\rho = 0.36$) and ML RMS ($\rho = 0.32$) remaining significant despite the smaller sample size. In the healthy subgroup the correlations are weaker ($\rho = 0.16$ to $0.29$) because healthy subjects have less between-subject variation in both settings, and only cadence reaches significance ($\rho = 0.29$).
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.99\linewidth]{figures/heatmap_clinic_home_feature_corr.png}
+    \caption{Spearman cross-correlation of five matched Gait features between clinic and home settings. Rows are clinic features; columns are their 90th-percentile home counterparts. Each panel shows one cohort group (All, POMS, Healthy). Diagonal cells are the direct clinic-to-home matches; off-diagonal cells show cross-feature spillover. The positive diagonal cluster in the full-cohort and POMS panels shows that the supervised 6MWT tracks the upper decile of free-living walking rather than the median.}
+    \label{fig:clinic_home_corr}
+\end{figure}
+
+\subsection{RQ4: Correlations with Clinical Scores}\label{sec:rq4}
+
+Within the POMS subgroup ($n = 38$) we tested how each feature correlates with EDSS, the four MFIS subscales (Total, Physical, Cognitive, Psychosocial), BDI, and POMS disease duration. Figures~\ref{fig:clin_corr_clinic} and~\ref{fig:clin_corr_home} show the top 10 features per setting, restricted to features whose sign matches the expected direction from the gait literature.
+
+In the clinic setting, the strongest associations come from CWT spectral features. Mean CWT high-frequency energy correlates positively with MFIS Psychosocial ($\rho = 0.44$), MFIS Physical ($\rho = 0.39$), and MFIS Total ($\rho = 0.33$), meaning higher high-frequency content is associated with more fatigue. The standard deviation of the harmonic ratio correlates with MFIS Physical ($\rho = 0.40$) and MFIS Cognitive ($\rho = 0.32$), meaning larger session-to-session changes in gait symmetry go with more fatigue. Other significant rows include standard deviation of CWT high-frequency energy, wavelet entropy mean, slope of high-frequency energy, standard deviation of frequency variability, AP harmonic ratio, standard deviation of fundamental frequency, and the normalized ML path length. Most associations are modest ($\rho$ in the 0.2 to 0.4 range), consistent with the small POMS sample.
+
+In the home setting, correlations are stronger overall and cluster around two axes. Shorter and less varied bouts go with worse scores: maximum bout duration correlates negatively with MFIS Cognitive ($\rho = -0.45$) and MFIS Total ($\rho = -0.39$). Bout-duration CV and activity-to-sedentary transition probability show the same pattern. Slower and more variable stride timing go with worse scores: mean stride-time at the 90th percentile correlates with MFIS Total ($\rho = 0.45$), MFIS Cognitive ($\rho = 0.44$), and MFIS Physical ($\rho = 0.39$). Several stride-timing variability features (90th-percentile CV, median CV, 90th-percentile SD, IQR of SD) all correlate positively with MFIS Total at $\rho = 0.40$ to $0.42$. BDI tracks the same features. EDSS has weaker associations in this sample, possibly because EDSS values cluster at the lower end of the scale (median $1.8 \pm 0.8$) and give little between-subject variation.
+
+Taken together, RQ4 shows that home features give a more complete picture of fatigue and depression burden than clinic features alone. Two interpretable axes explain most of the signal: bout length and stride-timing stability. Both are measurable at home with a single hip-worn accelerometer.
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.99\linewidth]{figures/heatmap_clinical_corr_clinic.png}
+    \caption{Spearman correlations between clinic accelerometry features and clinical scores in the POMS subgroup ($n=38$). Rows are the top 10 features whose sign matches gait-literature expectations. CWT irregularity and high-frequency energy rise with fatigue (MFIS) and depression (BDI) scores.}
+    \label{fig:clin_corr_clinic}
+\end{figure}
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.97\linewidth]{figures/heatmap_clinical_corr_home.png}
+    \caption{Spearman correlations between home accelerometry features and clinical scores in the POMS subgroup ($n=38$). Two axes explain most of the signal: shorter and less varied walking bouts, and slower and more variable stride timing.}
+    \label{fig:clin_corr_home}
+\end{figure}
+
+\subsection{RQ5: 6MWD Prediction Performance}\label{sec:rq5}
+Figure~\ref{fig:model_bar} compares seven models across both settings. Linear models (ElasticNet, Ridge, Lasso) give the lowest clinic MAE (30 to 33 m), and the non-linear models (XGBoost, RF, KNN) are all worse (43 to 56 m). In the home setting the spread is smaller: SVR and Lasso are lowest (about 55 m) and KNN is highest (66 m), with Ridge close to the best at 56 m. Home MAEs cluster in a narrow 55--66 m band while clinic MAEs span a wider 30--56 m range, and the clinic-to-home gap is roughly 20--25 m for the best models (Ridge, ElasticNet, Lasso), confirming that the home ceiling is set by the free-living data rather than by the regressor.
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.95\linewidth]{figures/fig_model_comparison_mae.png}
+    \caption{6MWD prediction MAE by model for clinic (blue) and home (red) settings. Error bars are 95\% percentile bootstrap confidence intervals. Linear models dominate in the clinic (ElasticNet 30.2\,m, Ridge 31.2\,m, Lasso 33.2\,m); the home setting is flatter across models, with home MAEs clustered in a narrow 55--66\,m band while clinic MAEs span a wider 30--56\,m range. The clinic-to-home gap is roughly 20--25\,m for the best linear models and shrinks for less-accurate regressors, indicating that the home ceiling is set by the free-living data rather than the model choice.}
+    \label{fig:model_bar}
+\end{figure}
+
+
+Table~\ref{tab:results} reports Ridge regression prediction performance for each feature set across both settings. In the clinic, the full Gait + CWT + WalkSway + Demo feature set (55 features) gave the best result: $R^2 = 0.81$ (95\% CI $[0.71, 0.88]$), MAE $= 31.2$ m ($[25.5, 37.1]$), and $r = 0.90$ ($[0.85, 0.94]$). The gait-only model reached $R^2 = 0.68$ and the combined model gained an extra 13 points by adding CWT, WalkSway, and demographics. CWT and WalkSway alone reached only $R^2 = 0.36$ and $0.40$, confirming that gait intensity and tempo carry most of the clinic signal while CWT and WalkSway add complementary information.
+
+In the home setting, the best clinic-free model was Bout + Act-Top20 + Demo (24 features), with $R^2 = 0.45$ ($[0.30, 0.55]$), MAE $= 56.0$ m ($[46.8, 65.5]$), and $r = 0.67$ ($[0.57, 0.76]$). Demographics alone reached $R^2 = 0.36$, and the home feature model without demographics reached $R^2 = 0.18$. The combination of per-bout home features and self-reported demographics is therefore essential. Applying the 51 clinic-style features directly to home data gave only $R^2 = 0.28$, suggesting that clinic feature definitions do not transfer cleanly to free-living walking. Running the Bout+Act-Top20+Demo pipeline on the clinic 6MWT recording also gave a competitive $R^2 = 0.69$ (MAE $= 39.6$ m), showing that the per-bout aggregation strategy works in both settings and is close to the full 55-feature clinic model with less than half the features.
+
+\begin{table}[!ht]
+\centering
+\caption{6MWD prediction performance by feature set and setting. Ridge regression with leave-one-out cross-validation. Values are mean [95\% bootstrap CI] from 2{,}000 resamples. Best per setting is in \textbf{bold}.}
+\label{tab:results}
+\small
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+Feature Set & \#f & Clinic $R^2$ & Clinic MAE (m) & Clinic $r$ & Home $R^2$ & Home MAE (m) \\
+\midrule
+Gait                 & 11 & 0.68 & 42.7 & 0.83 & 0.15 & 70.1 \\
+CWT                  & 28 & 0.36 & 60.2 & 0.60 & 0.15 & 67.9 \\
+WalkSway             & 12 & 0.40 & 54.2 & 0.63 & 0.06 & 73.3 \\
+Demo                 & 4  & 0.36 & 60.8 & 0.60 & 0.36 & 60.8 \\
+Bout+Act-Top20       & 20 & 0.63 & 44.3 & 0.79 & 0.18 & 67.2 \\
+Bout+Act-Top20+Demo  & 24 & 0.69 & 39.6 & 0.83 & \textbf{0.45} & \textbf{56.0} \\
+Gait+CWT+WS+Demo     & 55 & \textbf{0.81} & \textbf{31.2} & \textbf{0.90} & 0.28 & 63.8 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:error} reports per-cohort error for the two best models. The clinic model performs better in POMS ($R^2 = 0.87$, MAE $= 29.0$ m, $r = 0.93$) than in healthy controls ($R^2 = 0.64$, MAE $= 32.5$ m, $r = 0.80$). The higher POMS $R^2$ is driven by the greater between-subject variation in 6MWD among POMS participants, which gives the model more signal to learn from. The home model gives $R^2 = 0.38$ in POMS and $R^2 = 0.21$ in healthy; MAE is about 10 m larger in POMS (62.6 m) than in healthy (52.1 m). The pattern is consistent with the clinic model: more pathology variability helps the model separate subjects.
+
+\begin{table}[!ht]
+\centering
+\caption{Per-cohort prediction performance for the two best feature sets. All values are mean [95\% bootstrap CI].}
+\label{tab:error}
+\small
+\begin{tabular}{@{}llcccc@{}}
+\toprule
+Feature Set & Cohort & $R^2$ & MAE (m) & RMSE (m) & $r$ \\
+\midrule
+\multirow{2}{*}{\shortstack[l]{Home: Bout+Act-\\Top20+Demo}}
+  & POMS    & 0.38 [0.16, 0.51] & 62.6 [48.3, 78.4] & 77.7 [59.9, 95.9] & 0.63 [0.47, 0.78] \\
+  & Healthy & 0.21 [-0.09, 0.37] & 52.1 [40.5, 66.3] & 72.4 [53.0, 93.3] & 0.47 [0.25, 0.63] \\
+\midrule
+\multirow{2}{*}{\shortstack[l]{Clinic: Gait+CWT+\\WalkSway+Demo}}
+  & POMS    & 0.87 [0.78, 0.92] & 29.0 [22.5, 35.9] & 35.5 [27.9, 43.2] & 0.93 [0.89, 0.96] \\
+  & Healthy & 0.64 [0.42, 0.79] & 32.5 [24.2, 42.5] & 48.8 [31.7, 66.4] & 0.80 [0.70, 0.89] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\section{Discussion}
+
+Our findings suggest that seven-day home accelerometry captures a clinically meaningful, but attenuated, representation of walking capacity in pediatric-onset multiple sclerosis. The main message is not that passive home monitoring can replace the clinic six-minute walk test (6MWT). Rather, it is that free-living wearable data preserve enough signal to support useful estimation of six-minute walk distance (6MWD), while also capturing aspects of everyday burden that are only partly visible during a brief supervised test. In this sense, clinic and home accelerometry should be viewed as related but non-equivalent measurements of mobility.
+
+\subsection{Clinic and Home Measure Different Aspects of Mobility}
+
+A central result of this study is that clinic and home measures were directionally consistent, but not interchangeable. In both settings, lower walking intensity and lower walking vigor were associated with poorer walking capacity, yet the home correlations were weaker and more heterogeneous than the clinic correlations. This pattern is important because it suggests that passive home monitoring does not simply reproduce the clinic 6MWT under noisier conditions. Instead, it captures walking capacity after it has been filtered through daily context, including opportunity to walk, behavioral habits, motivation, and environmental constraints. The clinic 6MWT measures what a participant can do under standardized demand; home monitoring measures how that capacity is expressed in ordinary life.
+
+The clinic-to-home correlation analysis supports this interpretation. Clinic features aligned most strongly with the upper end of each participant's home walking distribution, especially the 90th-percentile summary rather than the median or maximum. This suggests that the supervised 6MWT reflects near-peak free-living effort rather than typical daily walking. That distinction helps explain why the two settings are clearly related but only modestly correlated. It also provides a useful conceptual bridge between clinic and home assessment: the most informative free-living summaries may be those that represent a participant's best sustained walking behavior rather than their average behavior.
+
+\subsection{Home Monitoring Is Informative but Less Precise}
+
+The prediction results reinforce the idea that measurement setting matters more than algorithmic sophistication. The clinic model achieved strong performance, with $R^2 = 0.81$, Pearson $r = 0.90$, and MAE of 31.2 m, whereas the fully clinic-free home model achieved $R^2 = 0.45$, Pearson $r = 0.67$, and MAE of 56.0 m. The persistence of an approximately 25 m MAE gap across several model families indicates that the main limitation is not the choice of regressor, but the underlying difference between supervised endurance testing and unconstrained daily-life behavior. In other words, the ceiling for home prediction is currently being set primarily by the data-generating setting rather than by model complexity.
+
+Even so, the home result remains clinically meaningful. A model based only on passive seven-day monitoring retained a substantial fraction of the clinic signal without requiring any prescribed at-home test. This is particularly relevant in POMS, where disability is often mild and intermittent, and where meaningful deviations from baseline may emerge in everyday routines before they become obvious during periodic clinic visits. The practical implication is that home monitoring is best understood as a complementary tool. It may not yet be precise enough to replace supervised 6MWT assessment when exact estimation is required, but it can extend observation beyond the clinic and provide a lower-burden measure of function between visits.
+
+\subsection{Home Monitoring Captures Broader Clinical Burden}
+
+Another important finding is that clinic and home features related differently to clinical scores. In the clinic, the strongest associations were concentrated in CWT-derived spectral features, suggesting that peak-effort walking may expose instability, rhythm disruption, and fatigue-related irregularity that are less apparent at lower effort. At home, the dominant correlates were shorter walking bouts, reduced bout variability, and slower or more variable stride timing. These features appear to reflect a broader behavioral phenotype, one that includes not only how well a participant walks, but also how often they sustain walking and how stable that walking remains across daily life.
+
+This distinction has clinical relevance. Fatigue and mood burden are often experienced over the course of a day rather than only during a brief standardized task. The fact that home features were strongly related to bout structure and stride-timing stability suggests that passive monitoring may be especially useful for capturing the real-world expression of symptom burden. From that perspective, home accelerometry does not merely offer a noisier version of the clinic test. It may also reveal dimensions of functional limitation that are intrinsically better measured in the home environment.
+
+\subsection{Comparison with Previous Works}
+
+As summarized in Table~\ref{tab:discussion_comparison}, earlier studies established important foundations, but they addressed association analyses, adult free-living prediction, or structured remote testing rather than fully passive home monitoring in POMS. In this context, our results compare favorably with the prior literature. The clinic model performed particularly well, reaching $R^2 = 0.81$, Pearson $r = 0.90$, and MAE of 31.2 m, which suggests that supervised wearable assessment during the 6MWT captures a large proportion of the signal underlying measured walking capacity. The home model was less accurate, as expected, but still achieved $R^2 = 0.45$, Pearson $r = 0.67$, and MAE of 56.0 m from passive seven-day monitoring alone. This is notable because free-living home data are inherently more heterogeneous and behaviorally confounded than clinic recordings or structured remote tests. Overall, our findings indicate that the clinic pipeline provides a strong surrogate for measured 6MWD, whereas the home pipeline offers a meaningful, though attenuated, clinic-free estimate of walking capacity. These results support the view that passive wearable monitoring in POMS is clinically informative and compares well with previous wearable approaches, especially given the greater difficulty of the pediatric and fully free-living setting.
+
+\begin{table}[!t]
+\centering
+\caption{Selected prior wearable-walking studies most relevant to distance estimation and association analyses.}
+\label{tab:discussion_comparison}
+\small
+\begin{threeparttable}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{2cm}>{\raggedright\arraybackslash}p{2cm}>{\raggedright\arraybackslash}p{1.6cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{2.5cm}@{}}
+\toprule
+Cohort/setting & Author & Outcome & Method summary & Main result \\
+\midrule
+Adult MS, 7-day free-living
+& Motl et al.~\cite{motl2011accelerometry}
+& 6MWD correlation
+& Hip accelerometer; average daily movement counts validated against in-clinic walking outcomes
+& Spearman $\rho = 0.52$ \\
+\midrule
+Adult MS + controls, clinic + 7-day free-living
+& Engelhard et al.~\cite{Engelhard2018RealWorld}
+& 6MWD correlation
+& Capacity-oriented accelerometer statistics, especially maximum step rate and habitual walking step rate, to separate walking capacity from behavior
+& Pearson $r = 0.88$ \\
+\midrule
+Adult MS, long-term free-living
+& Sun et al.~\cite{Sun2022Utility}
+& 6MWD prediction
+& Fitbit minute/day step-count features plus demographics; feature selection with machine-learning regressors
+& Best 6MWD prediction: $R^2 = 0.30$ \\
+\midrule
+Adult MS, clinic and home structured 2MWT
+& Kontaxis et al.~\cite{Kontaxis2023Automatic}
+& 2MWD prediction
+& Wearable-accelerometer pipeline for automatic 2MWD estimation during supervised and home self-administered 2MWT
+& Pearson $r = 0.71$ in clinic and $r = 0.58$ at home \\
+\midrule
+POMS + healthy controls, supervised clinic 6MWT
+& This study
+& 6MWD prediction 
+& Hip accelerometer; gait + CWT + WalkSway + demographics; Ridge with leave-one-subject-out cross-validation
+& $R^2 = 0.81$, Pearson $r = 0.90$, MAE $= 31.2$ m \\
+\midrule
+POMS + healthy controls, 7-day free-living
+& This study
+& 6MWD prediction 
+& Hip accelerometer; bout-level gait + activity summaries + demographics; fully clinic-free Ridge pipeline
+& $R^2 = 0.45$, Pearson $r = 0.67$, MAE $= 56.0$ m \\
+\bottomrule
+\end{tabularx}
+% \begin{tablenotes}[flushleft]
+% \footnotesize
+% \item 6MWD, six-minute walk distance; 2MWD, two-minute walk distance; POMS, pediatric-onset multiple sclerosis; CWT, continuous wavelet transform; MAE, mean absolute error.
+% \end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\subsection{Implications, Limitations, and Next Steps}
+
+Taken together, these findings support a balanced interpretation. Passive home accelerometry in POMS is clearly more than a generic activity proxy, but it is still less precise than supervised clinic assessment for estimating 6MWD. The strongest immediate role for home monitoring is therefore adjunctive rather than substitutive: enriching clinic assessment, identifying changes between visits, and providing a more continuous view of mobility in everyday life.
+
+Several limitations temper these conclusions. The cohort was modest in size and drawn from a single academic center, which limits generalizability. The study was cross-sectional, so it cannot determine whether home-derived estimates track clinically meaningful change over time. In addition, home monitoring remains sensitive to wear compliance and walking-bout detection quality, both of which introduce noise. These limitations point directly to future work. Larger multi-site cohorts, longitudinal follow-up, and richer passive sensing may help narrow the clinic-to-home gap. The present findings also suggest a specific methodological direction: home features anchored to upper-end free-living performance may offer the best route for aligning passive monitoring with supervised walking tests.
+
+Overall, the contribution of this study is not only that wearable accelerometry can predict 6MWD in POMS, but that it clarifies how clinic and home monitoring differ. The clinic 6MWT remains the most precise tool for estimating walking capacity. Passive home monitoring, however, captures a meaningful and clinically relevant fraction of that signal while extending measurement into the setting where patients actually live.
+
+
+
+\section{Conclusion}\label{sec:conclusion}
+
+We used hip-worn accelerometry in the clinic and at home to study gait in 101 participants (38 with pediatric-onset MS and 63 healthy controls). POMS participants walked with lower cadence, lower intensity, and higher relative lateral sway than controls; at home they showed shorter and less varied walking bouts. Clinic gait intensity features tracked 6MWD most strongly, while home features carried the same signal at smaller magnitudes. Clinic and home measurements were most correlated when the home value was taken at the 90th percentile of a subject's walking bouts, meaning the supervised 6MWT samples near-peak free-living effort. CWT spectral features at the clinic and stride-timing variability at home correlated with fatigue scores. Ridge regression predicted 6MWD with $R^2 = 0.81$ (MAE $= 31.2$ m) in the clinic and $R^2 = 0.45$ (MAE $= 56.0$ m) in a fully clinic-free home pipeline. The home model is a partial substitute for the clinic 6MWT and enables remote monitoring between clinic visits, while the clinic model remains the best option when precise 6MWD estimation is needed.
+
+
+\bibliographystyle{unsrt}
+\bibliography{references}
+
+
+\clearpage
+\appendix
+\section*{Supplementary Figures}\label{sec:supp}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\linewidth,height=0.32\textheight,keepaspectratio]{figures/fig_supp_wear_median_bout.png}
+    \caption{Supplementary Figure S1. Left: Device wear time over the home monitoring period, shown as violin plots with jittered subject points for POMS and healthy controls. Median wear time is 59 hours for POMS and 53 hours for healthy controls, with no significant group difference (Mann-Whitney $U$, $p = 0.19$). Right: Per-subject median bout duration by cohort (one data point per subject). Medians are 14 s for both groups, with POMS showing a wider lower tail}
+    \label{fig:supp_wear_median_bout}
+\end{figure}
+
+\vspace{-0.4em}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.80\linewidth,height=0.28\textheight,keepaspectratio]{figures/fig_supp_bout_threshold_sensitivity.png}
+    \caption{Supplementary Figure S2. Sensitivity of home 6MWD prediction MAE to the minimum walking-bout duration threshold. At each threshold (10, 30, 60, 120, 240 s) the cached per-bout features are filtered, re-aggregated, combined with the 29 whole-recording activity features, and fed to the headline Bout+Act-Top20+Demo pipeline (Ridge $\alpha=20$, leave-one-out cross-validation). Error bars are 95\% percentile bootstrap confidence intervals (B = 2000). The 10\,s threshold yields the best MAE of 56.0\,m; stricter thresholds reduce the number of usable bouts (mean bouts per subject drop from 1{,}454 at 10\,s to 11 at 240\,s) and at 240\,s leave 9 of 101 subjects with zero bouts, degrading MAE to 65.5\,m.}
+    \label{fig:supp_bout_threshold}
+\end{figure}
+
+\end{document}

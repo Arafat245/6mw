@@ -1,0 +1,47 @@
+JUSTIFICATION FOR USING THE MANN-WHITNEY U TEST
+================================================================
+
+Cohort comparison: POMS (n=50) vs Healthy (n=70), clinic 6MWT WalkSway
+features. The figure walksway_significant_violins.png reports a two-sided
+Mann-Whitney U (Wilcoxon rank-sum) test for each feature, with
+Benjamini-Hochberg FDR correction over the 14-feature WalkSway family.
+
+WHY NOT A t-TEST?
+----------------------------------------------------------------
+The independent-samples t-test assumes each group is approximately
+normally distributed. We tested this with the Shapiro-Wilk test within
+each cohort (H0: data are normally distributed). A Shapiro-Wilk p < 0.05
+means normality is rejected, violating the t-test assumption and making
+the rank-based, distribution-free Mann-Whitney U test the appropriate
+choice. Skewness and excess kurtosis are reported as supporting evidence
+(a normal distribution has skew = 0 and excess kurtosis = 0).
+
+SHAPIRO-WILK NORMALITY TEST (per cohort, per feature)
+----------------------------------------------------------------
+Feature         Cohort       n        W          p    skew    kurt  normal?
+ML_Over_ENMO    POMS        50    0.915   1.50e-03   +1.22   +2.07  NO (reject)
+ML_Over_ENMO    Healthy     70    0.934   1.12e-03   +1.14   +2.87  NO (reject)
+ML_Over_VT      POMS        50    0.976   4.00e-01   +0.44   -0.23  yes
+ML_Over_VT      Healthy     70    0.980   3.13e-01   +0.50   +0.15  yes
+ML_Spec_Frac    POMS        50    0.967   1.76e-01   -0.10   -1.05  yes
+ML_Spec_Frac    Healthy     70    0.977   2.23e-01   +0.34   -0.57  yes
+
+POOLED (both cohorts combined)
+Feature                      n        W          p    skew    kurt  normal?
+ML_Over_ENMO    (all)      120    0.897   1.40e-07   +1.52   +3.71  NO (reject)
+ML_Over_VT      (all)      120    0.972   1.22e-02   +0.62   +0.26  NO (reject)
+ML_Spec_Frac    (all)      120    0.975   2.50e-02   +0.23   -0.85  NO (reject)
+
+CONCLUSION
+----------------------------------------------------------------
+At least one cohort distribution per feature significantly departs from
+normality (Shapiro-Wilk p < 0.05), and the features are right-skewed
+ratios bounded at 0. The normality assumption of the parametric t-test
+is therefore not met. We use the two-sided Mann-Whitney U test, which is
+non-parametric (rank-based), makes no normality assumption, and is robust
+to skew and outliers. Group differences are summarized with medians and
+95% bootstrap confidence intervals (consistent with a rank-based test),
+and p-values are BH-FDR corrected across the WalkSway feature family.
+
+Test: scipy.stats.mannwhitneyu(..., alternative='two-sided')
+Normality: scipy.stats.shapiro ; skew/kurtosis: scipy.stats (Fisher, excess)

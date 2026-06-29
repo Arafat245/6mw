@@ -37,6 +37,11 @@ SUP = 15   # suptitle font (+1)
 LEG = 12   # legend font (+1)
 TICK = 12  # tick font (+1)
 
+# Shared axes-fraction y for the significance bracket/text so the p_BH
+# annotations align across the two violin panels.
+BAR_Y = 0.88
+TXT_Y = 0.90
+
 
 def save_paper_figure(fig, filename, dpi=300):
     fig.savefig(OUT / filename, dpi=dpi, bbox_inches='tight')
@@ -66,7 +71,7 @@ def main():
         n_bouts = len(bouts_per_subj[key])
         rows.append({
             'key': key,
-            'cohort': 'POMS' if r['cohort'] == 'M' else 'Healthy',
+            'cohort': 'POMS' if r['cohort'] == 'M' else 'Control',
             'n_bouts': n_bouts,
             'max_dur':    float(max_by_key[key]),
             'enmo_p90':   float(enmo_p90_by_key.get(key, np.nan)),
@@ -74,15 +79,15 @@ def main():
     df = pd.DataFrame(rows).dropna(subset=['max_dur'])
 
     n_p = (df.cohort == 'POMS').sum()
-    n_h = (df.cohort == 'Healthy').sum()
-    print(f"Subjects with bouts: {len(df)} (POMS={n_p}, Healthy={n_h})")
+    n_h = (df.cohort == 'Control').sum()
+    print(f"Subjects with bouts: {len(df)} (POMS={n_p}, Control={n_h})")
 
-    pooled = {'Healthy': [], 'POMS': []}
+    pooled = {'Control': [], 'POMS': []}
     for _, r in subj_df.iterrows():
         if r['key'] not in bouts_per_subj:
             continue
         durs = [(end - start) / FS for start, end in bouts_per_subj[r['key']]]
-        pooled['POMS' if r['cohort'] == 'M' else 'Healthy'].extend(durs)
+        pooled['POMS' if r['cohort'] == 'M' else 'Control'].extend(durs)
 
     # ─────────────────────────────────────────────────────────────────
     # Combined figure: outer 1×3 (duration | intensity | survival)
@@ -90,11 +95,18 @@ def main():
     fig = plt.figure(figsize=(17, 7))
     outer = fig.add_gridspec(1, 3, width_ratios=[0.45, 0.45, 1.0], wspace=0.28)
 
+    # Raw two-sided Mann-Whitney p-values for the two cohort comparisons
+    # (longest bout + intensity), reported uncorrected on this figure.
+    poms_max    = df[df.cohort == 'POMS']['max_dur'].values
+    healthy_max = df[df.cohort == 'Control']['max_dur'].values
+    _, pval = mannwhitneyu(poms_max, healthy_max, alternative='two-sided')
+    df_in = df[['cohort', 'enmo_p90']].dropna().copy()
+    poms_int    = df_in.loc[df_in.cohort == 'POMS',    'enmo_p90'].values
+    healthy_int = df_in.loc[df_in.cohort == 'Control', 'enmo_p90'].values
+    _, pval_in = mannwhitneyu(poms_int, healthy_int, alternative='two-sided')
+
     # LEFT: violin + jitter of longest sustained bout per cohort
     ax_bx = fig.add_subplot(outer[0])
-    poms_max    = df[df.cohort == 'POMS']['max_dur'].values
-    healthy_max = df[df.cohort == 'Healthy']['max_dur'].values
-    _, pval = mannwhitneyu(poms_max, healthy_max, alternative='two-sided')
     stars = ('***' if pval < 0.001
              else '**' if pval < 0.01
              else '*' if pval < 0.05
@@ -104,10 +116,10 @@ def main():
     df_bx = df[['cohort', 'max_dur']].copy()
     df_bx['max_dur_min'] = df_bx['max_dur'] / 60.0
 
-    palette = {'Healthy': CLR_HEALTHY, 'POMS': CLR_POMS}
+    palette = {'Control': CLR_HEALTHY, 'POMS': CLR_POMS}
     sns.violinplot(
         data=df_bx, x='cohort', y='max_dur_min',
-        order=['Healthy', 'POMS'], palette=palette,
+        order=['Control', 'POMS'], palette=palette,
         inner=None, cut=0, linewidth=1.2,
         saturation=0.9, width=0.85, ax=ax_bx,
     )
@@ -117,18 +129,18 @@ def main():
 
     sns.stripplot(
         data=df_bx, x='cohort', y='max_dur_min',
-        order=['Healthy', 'POMS'], palette=palette,
+        order=['Control', 'POMS'], palette=palette,
         size=4.2, jitter=0.18, alpha=0.9,
         edgecolor='white', linewidth=0.6, ax=ax_bx,
     )
 
     # Median ticks drawn in black on top of each violin
-    for i, cohort in enumerate(['Healthy', 'POMS']):
+    for i, cohort in enumerate(['Control', 'POMS']):
         med = float(df_bx.loc[df_bx.cohort == cohort, 'max_dur_min'].median())
         ax_bx.plot([i - 0.22, i + 0.22], [med, med],
                    color='black', linewidth=2.0, zorder=5)
 
-    ax_bx.set_xticklabels(['Healthy', 'POMS'],
+    ax_bx.set_xticklabels(['Control', 'POMS'],
                            fontsize=TICK, fontweight='bold')
     ax_bx.set_xlabel('')
     ax_bx.set_ylabel('Longest sustained bout (min)',
@@ -140,24 +152,20 @@ def main():
                linestyle='--', linewidth=0.5)
     ax_bx.set_axisbelow(True)
 
-    # Significance bracket + stars (linear space)
+    # Significance bracket + stars. Place bracket/text in axes-fraction y
+    # (via get_xaxis_transform) at the SAME height as the intensity panel so
+    # the two p_BH annotations line up across subplots.
     y_top = float(df_bx['max_dur_min'].max())
-    y_bar = y_top * 1.05
-    y_txt = y_top * 1.09
-    ax_bx.plot([0, 0, 1, 1],
-                [y_bar - y_top * 0.012, y_bar, y_bar, y_bar - y_top * 0.012],
-                color='black', linewidth=1.1)
-    ax_bx.text(0.5, y_txt, f'{stars}  (p = {pval:.1e})',
-                ha='center', va='bottom',
-                fontsize=LBL, fontweight='bold')
     ax_bx.set_ylim(top=y_top * 1.18)
+    trans = ax_bx.get_xaxis_transform()
+    ax_bx.plot([0, 0, 1, 1], [BAR_Y - 0.012, BAR_Y, BAR_Y, BAR_Y - 0.012],
+                color='black', linewidth=1.1, transform=trans, clip_on=False)
+    ax_bx.text(0.5, TXT_Y, f'{stars}  (p = {pval:.1e})',
+                ha='center', va='bottom', transform=trans,
+                fontsize=LBL, fontweight='bold')
 
     # MIDDLE: violin of per-subject 90th-percentile bout intensity (ENMO, g)
     ax_in = fig.add_subplot(outer[1])
-    df_in = df[['cohort', 'enmo_p90']].dropna().copy()
-    poms_int    = df_in.loc[df_in.cohort == 'POMS',    'enmo_p90'].values
-    healthy_int = df_in.loc[df_in.cohort == 'Healthy', 'enmo_p90'].values
-    _, pval_in = mannwhitneyu(poms_int, healthy_int, alternative='two-sided')
     stars_in = ('***' if pval_in < 0.001
                 else '**' if pval_in < 0.01
                 else '*' if pval_in < 0.05
@@ -165,7 +173,7 @@ def main():
 
     sns.violinplot(
         data=df_in, x='cohort', y='enmo_p90',
-        order=['Healthy', 'POMS'], palette=palette,
+        order=['Control', 'POMS'], palette=palette,
         inner=None, cut=0, linewidth=1.2,
         saturation=0.9, width=0.85, ax=ax_in,
     )
@@ -175,17 +183,17 @@ def main():
 
     sns.stripplot(
         data=df_in, x='cohort', y='enmo_p90',
-        order=['Healthy', 'POMS'], palette=palette,
+        order=['Control', 'POMS'], palette=palette,
         size=4.2, jitter=0.18, alpha=0.9,
         edgecolor='white', linewidth=0.6, ax=ax_in,
     )
 
-    for i, cohort in enumerate(['Healthy', 'POMS']):
+    for i, cohort in enumerate(['Control', 'POMS']):
         med = float(df_in.loc[df_in.cohort == cohort, 'enmo_p90'].median())
         ax_in.plot([i - 0.22, i + 0.22], [med, med],
                    color='black', linewidth=2.0, zorder=5)
 
-    ax_in.set_xticklabels(['Healthy', 'POMS'],
+    ax_in.set_xticklabels(['Control', 'POMS'],
                            fontsize=TICK, fontweight='bold')
     ax_in.set_xlabel('')
     ax_in.set_ylabel('90th percentile bout intensity (g)',
@@ -198,20 +206,17 @@ def main():
     ax_in.set_axisbelow(True)
 
     y_top_in = float(df_in['enmo_p90'].max())
-    y_bar_in = y_top_in * 1.04
-    y_txt_in = y_top_in * 1.08
-    ax_in.plot([0, 0, 1, 1],
-                [y_bar_in - y_top_in * 0.01, y_bar_in, y_bar_in,
-                 y_bar_in - y_top_in * 0.01],
-                color='black', linewidth=1.1)
-    ax_in.text(0.5, y_txt_in, f'{stars_in}  (p = {pval_in:.1e})',
-                ha='center', va='bottom',
-                fontsize=LBL, fontweight='bold')
     ax_in.set_ylim(top=y_top_in * 1.18)
+    trans_in = ax_in.get_xaxis_transform()
+    ax_in.plot([0, 0, 1, 1], [BAR_Y - 0.012, BAR_Y, BAR_Y, BAR_Y - 0.012],
+                color='black', linewidth=1.1, transform=trans_in, clip_on=False)
+    ax_in.text(0.5, TXT_Y, f'{stars_in}  (p = {pval_in:.1e})',
+                ha='center', va='bottom', transform=trans_in,
+                fontsize=LBL, fontweight='bold')
 
     # RIGHT: survival curves (x-axis in minutes)
     ax_sv = fig.add_subplot(outer[2])
-    for cohort, color in [('Healthy', CLR_HEALTHY), ('POMS', CLR_POMS)]:
+    for cohort, color in [('Control', CLR_HEALTHY), ('POMS', CLR_POMS)]:
         durs = np.array(sorted(pooled[cohort]))  # seconds
         n_b = len(durs)
         surv = 1.0 - np.arange(n_b) / n_b
@@ -252,23 +257,23 @@ def main():
     ax_sv.grid(True, which='both', alpha=0.25, linestyle='--', linewidth=0.5)
     ax_sv.legend(loc='upper right', frameon=True, fontsize=LEG)
     for t_thresh in (30, 60, 120, 300):  # seconds
-        for cohort in ('Healthy', 'POMS'):
+        for cohort in ('Control', 'POMS'):
             durs = np.array(pooled[cohort])
             frac = float((durs >= t_thresh).mean())
-            color = CLR_HEALTHY if cohort == 'Healthy' else CLR_POMS
+            color = CLR_HEALTHY if cohort == 'Control' else CLR_POMS
             ax_sv.scatter([t_thresh / 60.0], [frac], s=24, c=color,
                           edgecolor='black', linewidth=0.5, zorder=4)
 
-    fig.suptitle('Home Walking-Bout Characteristics by Cohort',
+    fig.suptitle('Free-Living Walking-Bout Characteristics by Cohort',
                  fontsize=SUP, fontweight='bold', y=1.0)
     save_paper_figure(fig, 'bout_distribution_overview.png')
     plt.close(fig)
     print("  Saved bout_distribution_overview.png [results/ + POMS/]")
 
     print("\n  Fraction of bouts \u2265 threshold:")
-    print(f"  {'Threshold':>12s}  {'Healthy':>10s}  {'POMS':>10s}")
+    print(f"  {'Threshold':>12s}  {'Control':>10s}  {'POMS':>10s}")
     for t_thresh in (30, 60, 120, 300, 600):
-        h = (np.array(pooled['Healthy']) >= t_thresh).mean()
+        h = (np.array(pooled['Control']) >= t_thresh).mean()
         p = (np.array(pooled['POMS'])   >= t_thresh).mean()
         print(f"  {t_thresh/60.0:>8.2f} min  {h:>10.2%}  {p:>10.2%}")
 

@@ -1,0 +1,25 @@
+% Requires \usepackage{booktabs,graphicx}. Spans both columns (table*) and is
+% scaled to the full text width with \resizebox, like Brenton 2022 Table 5.
+\begin{table*}[t]
+\centering
+\caption{\textbf{Group Differences in Free-Living Mediolateral-Sway Features Using Linear Mixed-Effects Modeling}}
+\label{tab:home_sway_lme}
+\setlength{\tabcolsep}{5pt}\renewcommand{\arraystretch}{1.15}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{l ccc ccc ccc}
+\toprule
+Fixed effects & \multicolumn{3}{c}{ML\_Over\_VT} & \multicolumn{3}{c}{ML\_Energy\_Frac} & \multicolumn{3}{c}{ML\_Spec\_Frac} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7} \cmidrule(lr){8-10}
+ & Effect size & CI & $p$ Value & Effect size & CI & $p$ Value & Effect size & CI & $p$ Value \\
+\midrule
+(Intercept) & 0.549 & 0.501 to 0.597 & \textbf{\textless0.001} & 0.142 & 0.130 to 0.154 & \textbf{\textless0.001} & 0.296 & 0.280 to 0.313 & \textbf{\textless0.001} \\
+\textbf{MS} & 0.095 & 0.037 to 0.153 & \textbf{0.001} & 0.021 & 0.006 to 0.035 & \textbf{0.006} & 0.022 & 0.002 to 0.042 & \textbf{0.029} \\
+\textbf{Female} & 0.017 & -0.038 to 0.072 & 0.537 & 0.004 & -0.010 to 0.018 & 0.538 & 0.008 & -0.011 to 0.027 & 0.423 \\
+\textbf{BMI} & -0.006 & -0.012 to -0.001 & \textbf{0.026} & -0.001 & -0.003 to -0.000 & \textbf{0.042} & -0.000 & -0.002 to 0.002 & 0.920 \\
+\textbf{Age} & -0.001 & -0.010 to 0.008 & 0.802 & -0.001 & -0.003 to 0.001 & 0.457 & -0.002 & -0.005 to 0.001 & 0.213 \\
+\bottomrule
+\end{tabular}%
+}
+\\[2pt]
+{\footnotesize Abbreviations: BMI = body mass index; CI = confidence interval; MS = multiple sclerosis; POMS = pediatric-onset MS. Effect size represents the estimate from linear mixed-effects models with a random intercept per participant (day-level repeated measures); $n=101$ (38 POMS, 63 Control; 963 subject-days, median 9 days/participant). Each outcome is a free-living ML-sway feature, computed per valid day (a day with $\geq$3 sustained walking bouts $\geq$60\,s; per-day value = median over that day's up-to-8 longest bouts) and entered as a repeated measure; all 101 participants had $\geq$1 valid day, so none were excluded. CIs represent the 95\% CIs. ``MS'' represents the group difference between the POMS and control group adjusted for sex, age, and BMI (age and BMI mean-centered); ``Female'' represents the group difference between all females and males. Significant values ($p<0.05$) are in bold. Benjamini-Hochberg-corrected MS $p$ values (across all four candidate ML-sway features, including the non-significant ML\_Over\_ENMO not shown): ML\_Over\_VT $=0.005$, ML\_Energy\_Frac $=0.012$, ML\_Spec\_Frac $=0.038$. This day-level mixed model confirms the unadjusted per-participant comparison and shows the POMS effect is independent of sex, age, and BMI.}
+\end{table*}

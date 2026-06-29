@@ -1,0 +1,48 @@
+NORMALITY TEST & JUSTIFICATION — per-epoch ML_Over_ENMO (Mann-Whitney U)
+========================================================================
+
+Figure walksway_ML_Over_ENMO_epoch_bars.png compares POMS vs Healthy
+ML_Over_ENMO within each of 6 one-minute epochs of the clinic 6MWT, using a
+two-sided Mann-Whitney U test per epoch (BH-FDR corrected across the 6 epochs).
+
+WHY NOT A t-TEST? The independent-samples t-test assumes each group is
+approximately normal. We test this with Shapiro-Wilk within each cohort at each
+epoch (H0: normal). Shapiro-Wilk p < 0.05 => normality rejected => the rank-based
+Mann-Whitney U is the appropriate test. Skewness and excess kurtosis are listed
+as supporting evidence (normal: skew=0, excess kurtosis=0).
+
+SHAPIRO-WILK (per cohort, per epoch)
+------------------------------------------------------------------------
+Epoch  Cohort       n        W          p    skew    kurt  normal?
+min 1  POMS        50    0.687   4.97e-09   +2.63   +7.59  NO (reject)
+min 1  Healthy     70    0.503   5.15e-14   +3.21   +9.75  NO (reject)
+
+min 2  POMS        50    0.503   8.99e-12   +4.21  +19.14  NO (reject)
+min 2  Healthy     70    0.298   1.31e-16   +6.47  +44.15  NO (reject)
+
+min 3  POMS        50    0.598   1.81e-10   +3.71  +16.01  NO (reject)
+min 3  Healthy     70    0.461   1.32e-14   +6.02  +42.29  NO (reject)
+
+min 4  POMS        50    0.720   1.91e-08   +3.13  +13.39  NO (reject)
+min 4  Healthy     70    0.970   9.03e-02   +0.61   +0.73  yes
+
+min 5  POMS        50    0.606   2.41e-10   +4.18  +21.88  NO (reject)
+min 5  Healthy     70    0.778   6.66e-09   +2.90  +14.71  NO (reject)
+
+min 6  POMS        50    0.879   1.05e-04   +1.48   +2.61  NO (reject)
+min 6  Healthy     70    0.534   1.47e-13   +5.15  +32.78  NO (reject)
+
+CONCLUSION
+------------------------------------------------------------------------
+11 of 12 cohort-by-epoch distributions significantly depart from
+normality (Shapiro-Wilk p < 0.05). ML_Over_ENMO is a ratio bounded at 0 and is
+right-skewed in most epochs (positive skew, frequent positive excess kurtosis),
+driven by a tail of high-sway subjects. The parametric t-test's normality
+assumption is therefore not met across epochs. We use the two-sided Mann-Whitney
+U test, which is non-parametric (rank-based), makes no normality assumption, and
+is robust to skew and outliers; bars show medians with 95% bootstrap CIs (the
+location/spread summaries consistent with a rank-based test), and per-epoch
+p-values are BH-FDR corrected across the 6 epochs.
+
+Tests: scipy.stats.shapiro ; scipy.stats.mannwhitneyu(alternative='two-sided')
+skew/kurtosis: scipy.stats (Fisher, excess).

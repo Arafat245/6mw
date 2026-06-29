@@ -53,7 +53,12 @@ def main() -> None:
     d = (subj[['key', 'cohort', 'sixmwd']]
          .merge(wear[['key', 'wear_hours']], on='key')
          .merge(pb[['key', 'g_duration_sec_med']], on='key'))
-    d['cohort_label'] = np.where(d['cohort'] == 'M', 'POMS', 'Healthy')
+    d['cohort_label'] = np.where(d['cohort'] == 'M', 'POMS', 'Control')
+
+    # Panel (a) only: show wear times in [10, 150] h, dropping the handful
+    # of very-short (< 10 h) and very-long (> 150 h) recordings so the
+    # violin/strip is not stretched by them. Panel (b) uses the full sample.
+    d_a = d.loc[(d['wear_hours'] >= 10) & (d['wear_hours'] <= 150)].copy()
 
     fig = plt.figure(figsize=(10, 5.4))
     outer = fig.add_gridspec(1, 2, width_ratios=[1.0, 1.0], wspace=0.32)
@@ -61,10 +66,10 @@ def main() -> None:
     ax_d = fig.add_subplot(outer[1])
 
     # ─────────────────────────── Panel (a) ───────────────────────────
-    palette = {'Healthy': CLR_HEALTHY, 'POMS': CLR_POMS}
-    order = ['Healthy', 'POMS']
+    palette = {'Control': CLR_HEALTHY, 'POMS': CLR_POMS}
+    order = ['Control', 'POMS']
     sns.violinplot(
-        data=d, x='cohort_label', y='wear_hours',
+        data=d_a, x='cohort_label', y='wear_hours',
         order=order, palette=palette,
         inner=None, cut=0, linewidth=1.2,
         saturation=0.9, width=0.85, ax=ax_v,
@@ -73,22 +78,25 @@ def main() -> None:
         coll.set_alpha(0.55)
         coll.set_edgecolor('none')
     sns.stripplot(
-        data=d, x='cohort_label', y='wear_hours',
+        data=d_a, x='cohort_label', y='wear_hours',
         order=order, palette=palette,
         size=4.2, jitter=0.18, alpha=0.9,
         edgecolor='white', linewidth=0.6, ax=ax_v,
     )
+    # Medians + Mann-Whitney are computed on the full sample so the
+    # figure agrees with the numbers cited in the body text and caption;
+    # only the violin/strip visual is trimmed above.
     for i, cohort in enumerate(order):
         med = float(d.loc[d['cohort_label'] == cohort, 'wear_hours'].median())
         ax_v.plot([i - 0.22, i + 0.22], [med, med],
                    color='black', linewidth=2.0, zorder=5)
 
-    hc = d.loc[d['cohort_label'] == 'Healthy', 'wear_hours']
+    hc = d.loc[d['cohort_label'] == 'Control', 'wear_hours']
     ms = d.loc[d['cohort_label'] == 'POMS',    'wear_hours']
     _, pval = mannwhitneyu(hc, ms, alternative='two-sided')
     stars = _sig_stars(pval)
     if stars:
-        y_top = float(d['wear_hours'].max())
+        y_top = float(d_a['wear_hours'].max())
         y_bar = y_top + (y_top * 0.05)
         ax_v.plot([0, 0, 1, 1],
                    [y_bar - (y_top * 0.01), y_bar, y_bar, y_bar - (y_top * 0.01)],
@@ -97,7 +105,7 @@ def main() -> None:
                   f'{stars}  (p = {pval:.2g})',
                   ha='center', va='bottom', fontsize=LBL, fontweight='bold')
 
-    ax_v.set_xticklabels(['Healthy', 'POMS'],
+    ax_v.set_xticklabels(['Control', 'POMS'],
                           fontsize=TICK, fontweight='bold')
     ax_v.set_xlabel('')
     ax_v.set_ylabel('Wear time (hours)', fontsize=LBL, fontweight='bold')
@@ -131,10 +139,10 @@ def main() -> None:
         ax_d.plot([i - 0.22, i + 0.22], [med, med],
                   color='black', linewidth=2.0, zorder=5)
 
-    hc_d = d.loc[d['cohort_label'] == 'Healthy', 'g_duration_sec_med']
+    hc_d = d.loc[d['cohort_label'] == 'Control', 'g_duration_sec_med']
     ms_d = d.loc[d['cohort_label'] == 'POMS',    'g_duration_sec_med']
 
-    ax_d.set_xticklabels(['Healthy', 'POMS'],
+    ax_d.set_xticklabels(['Control', 'POMS'],
                          fontsize=TICK, fontweight='bold')
     ax_d.set_xlabel('')
     ax_d.set_ylabel('Median bout duration (s)', fontsize=LBL, fontweight='bold')
@@ -145,7 +153,7 @@ def main() -> None:
               linestyle='--', linewidth=0.5)
     ax_d.set_axisbelow(True)
 
-    fig.suptitle('Home Monitoring Summary',
+    fig.suptitle('Free-Living Monitoring Summary',
                   fontsize=SUP, fontweight='bold', y=1.02)
     out_name = 'fig_supp_wear_median_bout.png'
     fig.savefig(POMS_FIGURES / out_name, dpi=300, bbox_inches='tight')
